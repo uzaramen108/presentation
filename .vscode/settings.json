@@ -1,0 +1,6 @@
+{
+    "slidev.include": [
+        "**/slides.md",
+        "250121_fenics_tutorial/slides.md"
+    ]
+}

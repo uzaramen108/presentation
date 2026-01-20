@@ -17,14 +17,14 @@ class: text-center
 drawings:
   persist: false
 # slide transition: https://sli.dev/guide/animations.html#slide-transitions
-transition: slide-left
+transition: none
 # enable MDC Syntax: https://sli.dev/features/mdc
 mdc: true
 # duration of the presentation
 duration: 35min
 ---
 
-# FeniCS Tutorial 1
+# FEniCS Tutorial 1
 
 Poisson equation
 
@@ -106,7 +106,7 @@ highlighter: shiki
 # Poisson Equation
 
 <div class="text-xl opacity-80 mb-8">
-  FeniCS에서 Poisson equation 계산
+  FEniCS에서 Poisson equation 계산
 </div>
 
 <div grid="~ cols-2 gap-8" class="text-left">
@@ -134,7 +134,7 @@ $$
 
 <div v-click>
 
-### 2. Bilinear form & linear form
+### 2. Bilinear & linear forms
 Prescribe $u$ first, then derive $f$
 
 $$
@@ -154,7 +154,7 @@ image: ./images/screenshot2.png
 class: bg-black/90 text-white
 ---
 
-# FeniCS 설치 Code
+# FEniCS 설치 Code
 <div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20">
 ```python {all} twoslash\
 # --------------------------------------------------
@@ -664,6 +664,593 @@ highlighter: shiki
 [Learn more](https://jsdokken.com/dolfinx-tutorial/chapter1/fundamentals_code.html)
 
 ---
+# Frontmatter
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# Poisson Equation (Complex)
+
+<div class="text-xl opacity-80 mb-8">
+  Problem with Complex-valued Fields
+</div>
+
+<div grid="~ cols-2 gap-8" class="text-left">
+
+<div>
+
+### 1. Governing Equation
+Complex source $f$ and boundary $u_D$
+
+$$
+\begin{aligned}
+-\nabla^2 u &= f && \text{in } \Omega \\
+u &= u_D && \text{on } \partial\Omega
+\end{aligned}
+$$
+
+<div v-click class="mt-4 text-sm opacity-80">
+
+- $u, f$ : Complex-valued functions ($\in \mathbb{C}$)
+- $f$ : $-1 - 2j$ (Real: -1, Imag: -2)
+
+</div>
+
+</div>
+
+<div v-click>
+
+### 2. Verification Strategy (in tutorial)
+Prescribe complex $u$ first
+
+$$
+\begin{aligned}
+\text{Step 1:} & \quad u_e = \frac{1}{2}x^2 + 1j \cdot y^2 \\
+\text{Step 2:} & \quad f = -\nabla^2 u_e = -(1 + 2j) \\
+\text{Step 3:} & \quad \text{Check } u_{num} \approx u_e
+\end{aligned}
+$$
+
+</div>
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# Poisson Equation (Complex)
+
+Inner Product with Conjugate ($\bar{v}$)
+
+<div grid="~ cols-2 gap-8" class="text-left">
+
+<div>
+
+### 1. 1차 미분으로 변환
+Inner product for complex spaces
+
+$$
+\begin{aligned}
+\langle u, v \rangle &= \int_{\Omega} u \cdot \bar{v} \, dx \\
+\int_{\Omega} -(\nabla^2 u) \bar{v} \, dx &= \int_{\Omega} f \bar{v} \, dx \\
+\int_{\Omega} \nabla u \cdot \nabla \bar{v} \, dx &= \int_{\Omega} f \bar{v} \, dx
+\end{aligned}
+$$
+
+<div v-click class="mt-4 text-sm opacity-80">
+
+- $\bar{v}$ : Complex Conjugate of Test function
+- 내적 정의 시 켤레(Conjugate)가 필수적으로 포함됨
+</div>
+
+</div>
+
+<div v-click>
+
+### 2. Bilinear & Linear Forms
+Definition for FEniCSx
+
+$$
+\begin{aligned}
+a(u, v) &= \int_{\Omega} \nabla u \cdot \nabla \bar{v} \, dx \\
+L(v) &= \int_{\Omega} f \bar{v} \, dx \\
+a(u,v) &= L(v) \quad \forall v \in \hat{V}_h
+\end{aligned}
+$$
+
+</div>
+</div>
+
+---
+layout: image-right
+image: ./images/screenshot9.png
+class: bg-black/90 text-white
+---
+
+# 실행 Code
+<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20">
+```python {all} twoslash\
+%%fenicsx -np 4
+from mpi4py import MPI
+from dolfinx import mesh
+from dolfinx import fem
+from dolfinx import default_scalar_type
+from dolfinx.fem.petsc import LinearProblem
+import numpy as np
+import ufl
+from pathlib import Path
+
+# Create mesh and function space
+domain = mesh.create_unit_square(MPI.COMM_WORLD, 10, 10)
+V = fem.functionspace(domain, ("Lagrange", 1))
+
+# Create test functions
+u_r = fem.Function(V, dtype=np.float64)
+u_r.interpolate(lambda x: x[0])
+u_c = fem.Function(V, dtype=np.complex128)
+u_c.interpolate(lambda x: 0.5 * x[0] ** 2 + 1j * x[1] ** 2)
+
+tdim = domain.topology.dim
+fdim = tdim - 1
+
+print("u_r dtype:", u_r.x.array.dtype)
+print("u_c dtype:", u_c.x.array.dtype)
+
+# PETSc setup
+from petsc4py import PETSc
+from dolfinx.fem.petsc import assemble_vector
+
+print("PETSc.ScalarType:", PETSc.ScalarType)
+assert np.dtype(PETSc.ScalarType).kind == "c", "PETSc must be compiled with complex support"
+
+# Variational formulation
+u = ufl.TrialFunction(V)
+v = ufl.TestFunction(V)
+f = fem.Constant(domain, PETSc.ScalarType(-1 - 2j))
+
+a = ufl.inner(ufl.grad(u), ufl.grad(v)) * ufl.dx
+L = ufl.inner(f, v) * ufl.dx
+L2 = f * ufl.conj(v) * ufl.dx
+
+print("L  =", L)
+print("L2 =", L2)
+
+# Test derivative
+J = u_c**2 * ufl.dx
+F = ufl.derivative(J, u_c, ufl.conj(v))
+residual = assemble_vector(fem.form(F))
+print("Residual:", residual.array)
+
+# Boundary conditions
+domain.topology.create_connectivity(fdim, tdim)
+boundary_facets = mesh.exterior_facet_indices(domain.topology)
+boundary_dofs = fem.locate_dofs_topological(
+    V, fdim, boundary_facets
+)
+bc = fem.dirichletbc(u_c, boundary_dofs)
+
+# Solve the problem
+problem = fem.petsc.LinearProblem(
+    a, L, bcs=[bc], petsc_options_prefix="complex_poisson"
+)
+uh = problem.solve()
+
+# Compute error
+x = ufl.SpatialCoordinate(domain)
+u_ex = 0.5 * x[0] ** 2 + 1j * x[1] ** 2
+L2_error = fem.form(
+    ufl.dot(uh - u_ex, uh - u_ex) * ufl.dx(metadata={"quadrature_degree": 5})
+)
+local_error = fem.assemble_scalar(L2_error)
+global_error = np.sqrt(domain.comm.allreduce(local_error, op=MPI.SUM))
+max_error = domain.comm.allreduce(np.max(np.abs(u_c.x.array - uh.x.array)), op=MPI.MAX)
+
+print(f"L2 Error: {global_error}")
+print(f"Max Error: {max_error}")
+
+# --------------------------------------------------
+# Export to HDF5/XDMF for Paraview
+# --------------------------------------------------
+from dolfinx.io import XDMFFile
+
+# Create output directory
+output_dir = Path("complex_poisson_output")
+output_dir.mkdir(exist_ok=True)
+
+# We need to split complex function into real and imaginary parts
+# because Paraview doesn't natively support complex fields
+
+V_real = fem.functionspace(domain, ("Lagrange", 1))
+uh_real = fem.Function(V_real, name="uh_real")
+uh_imag = fem.Function(V_real, name="uh_imag")
+
+# Copy real and imaginary parts
+uh_real.x.array[:] = uh.x.array.real
+uh_imag.x.array[:] = uh.x.array.imag
+
+# Export real part
+with XDMFFile(domain.comm, output_dir / "uh_real.xdmf", "w") as xdmf:
+    xdmf.write_mesh(domain)
+    xdmf.write_function(uh_real)
+
+# Export imaginary part
+with XDMFFile(domain.comm, output_dir / "uh_imag.xdmf", "w") as xdmf:
+    xdmf.write_mesh(domain)
+    xdmf.write_function(uh_imag)
+
+if domain.comm.rank == 0:
+    print(f"\n✅ XDMF files exported to {output_dir}/")
+    print(f"   - uh_real.xdmf")
+    print(f"   - uh_imag.xdmf")
+    print(f"\nOpen these files in Paraview to visualize the solution.")
+```
+</div>
+
+
+[Learn more](https://sli.dev/features/line-highlighting)
+
+<!-- Inline style -->
+<style>
+.footnotes-sep {
+  @apply mt-5 opacity-10;
+}
+.footnotes {
+  @apply text-sm opacity-75;
+}
+.footnote-backref {
+  display: none;
+}
+</style>
+
+<!--
+Notes can also sync with clicks
+
+[click] This will be highlighted after the first click
+
+[click] Highlighted with `count = ref(0)`
+
+[click:3] Last click (skip two clicks)
+-->
+
+---
+layout: image-right
+image: ./images/screenshot9.png
+class: bg-black/90 text-white
+---
+
+# 실행 Code
+<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20">
+```python {all|1-10|11-14|16-20|22-23} twoslash\
+# 라이브러리 import 및 mesh 설정
+%%fenicsx -np 4
+from mpi4py import MPI
+from dolfinx import mesh
+from dolfinx import fem
+from dolfinx import default_scalar_type
+from dolfinx.fem.petsc import LinearProblem
+import numpy as np
+import ufl
+from pathlib import Path
+
+# Create mesh and function space
+domain = mesh.create_unit_square(MPI.COMM_WORLD, 10, 10) # mesh.CellType.quadrilateral 빠짐
+V = fem.functionspace(domain, ("Lagrange", 1))
+
+# Create test functions(실수 따로 허수 따로)
+u_r = fem.Function(V, dtype=np.float64)
+u_r.interpolate(lambda x: x[0])
+u_c = fem.Function(V, dtype=np.complex128)
+u_c.interpolate(lambda x: 0.5 * x[0] ** 2 + 1j * x[1] ** 2)
+
+tdim = domain.topology.dim
+fdim = tdim - 1
+```
+</div>
+
+[Learn more](https://www.researchgate.net/publication/377241242_DOLFINx_The_next_generation_FEniCS_problem_solving_environment)
+
+<!-- Inline style -->
+<style>
+.footnotes-sep {
+  @apply mt-5 opacity-10;
+}
+.footnotes {
+  @apply text-sm opacity-75;
+}
+.footnote-backref {
+  display: none;
+}
+</style>
+
+<!--
+Notes can also sync with clicks
+
+[click] This will be highlighted after the first click
+
+[click] Highlighted with `count = ref(0)`
+
+[click:3] Last click (skip two clicks)
+-->
+
+---
+theme: seriph
+class: bg-black/90 text-white
+highlighter: shiki
+---
+
+# 실행 Code
+
+<div class="text-xl opacity-80 mb-8">
+  FEniCS에서 Poisson equation 계산 (Variational Problem)
+</div>
+
+<div class="grid grid-cols-2 gap-8 text-left">
+
+<div class="overflow-y-auto h-full shadow-lg rounded-md border border-gray-200/20 bg-[#1e1e1e] p-1">
+```python {all|1-3|5-6|8-11|12-15}
+# PETSc setup
+from petsc4py import PETSc
+from dolfinx.fem.petsc import assemble_vector
+
+print("PETSc.ScalarType:", PETSc.ScalarType)
+assert np.dtype(PETSc.ScalarType).kind == "c", "PETSc must be compiled with complex support"
+
+# Variational formulation
+u = ufl.TrialFunction(V)
+v = ufl.TestFunction(V)
+f = fem.Constant(domain, PETSc.ScalarType(-1 - 2j))
+
+a = ufl.inner(ufl.grad(u), ufl.grad(v)) * ufl.dx
+L = ufl.inner(f, v) * ufl.dx
+L2 = f * ufl.conj(v) * ufl.dx
+```
+</div>
+<div class="flex-col justify-center space-y-6">
+<div class="text-sm opacity-90 p-4 border-l-4 border-green-500 bg-gray-800/30 rounded-r">
+$$
+\begin{aligned}
+a(u, v) &= \int_{\Omega} \nabla u \cdot \nabla \bar{v} \, dx \\
+L(v) &= \int_{\Omega} f \bar{v} \, dx \\
+a(u,v) &= L(v)\quad \forall v \in \hat{V}_h
+\end{aligned}
+$$
+</div>
+</div>
+</div>
+
+<div class="abs-br m-6 text-sm opacity-50"> <a href="https://jsdokken.com/dolfinx-tutorial/chapter1/fundamentals_code.html" target="_blank" class="hover:text-blue-400 border-b border-dashed border-gray-500"> Learn more </a> </div>
+
+[Learn more](https://jsdokken.com/dolfinx-tutorial/chapter1/fundamentals_code.html)
+
+---
+class: bg-black/90 text-white
+---
+
+# 실행 Code
+<div class="grid grid-cols-2 gap-8 text-left">
+<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20">
+```python {all|1-5|6-13} twoslash\
+# Test derivative
+J = u_c**2 * ufl.dx
+F = ufl.derivative(J, u_c, ufl.conj(v))
+residual = assemble_vector(fem.form(F))
+print("Residual:", residual.array)
+
+# Boundary conditions
+domain.topology.create_connectivity(fdim, tdim)
+boundary_facets = mesh.exterior_facet_indices(domain.topology)
+boundary_dofs = fem.locate_dofs_topological(
+    V, fdim, boundary_facets
+)
+bc = fem.dirichletbc(u_c, boundary_dofs)
+```
+</div>
+<div class="flex-col justify-center space-y-6">
+<div class="text-sm opacity-90 p-4 border-l-4 border-green-500 bg-gray-800/30 rounded-r">
+$$
+\begin{aligned}
+J(u_c) &= \int_{\Omega} u_c^2 \, dx \\
+F(v) &= \delta J(u_c; \bar{v}) \\
+&= \frac{d}{d\epsilon} J(u_c + \epsilon \bar{v}) \Big|_{\epsilon=0} \\
+&= \int_{\Omega} 2 u_c \cdot \bar{v} \, dx
+\end{aligned}
+$$
+<div class="mt-2 text-xs text-gray-400">
+* FEniCS가 복소수의 미분에도 정상작동하는가?
+</div>
+</div>
+</div>
+</div>
+
+[Learn more](https://www.researchgate.net/publication/377241242_DOLFINx_The_next_generation_FEniCS_problem_solving_environment)
+
+<!-- Inline style -->
+<style>
+.footnotes-sep {
+  @apply mt-5 opacity-10;
+}
+.footnotes {
+  @apply text-sm opacity-75;
+}
+.footnote-backref {
+  display: none;
+}
+</style>
+
+<!--
+Notes can also sync with clicks
+
+[click] This will be highlighted after the first click
+
+[click] Highlighted with `count = ref(0)`
+
+[click:3] Last click (skip two clicks)
+-->
+
+---
+class: bg-black/90 text-white
+---
+
+# 실행 Code
+<div class="grid grid-cols-2 gap-8 text-left">
+<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20">
+```python {all|1-8|10-18|20-21} twoslash\
+# Solve the problem
+problem = fem.petsc.LinearProblem(
+    a,
+    L,
+    bcs=[bc],
+    petsc_options_prefix="complex_poisson"
+)
+uh = problem.solve()
+
+# Compute error
+x = ufl.SpatialCoordinate(domain)
+u_ex = 0.5 * x[0] ** 2 + 1j * x[1] ** 2 # 해석해: 0.5x² + i·y²
+L2_error = fem.form(
+    ufl.dot(uh - u_ex, uh - u_ex) * ufl.dx(metadata={"quadrature_degree": 5})
+)
+local_error = fem.assemble_scalar(L2_error) # 로컬 프로세스 오차
+global_error = np.sqrt(domain.comm.allreduce(local_error, op=MPI.SUM)) # 전체 오차
+max_error = domain.comm.allreduce(np.max(np.abs(u_c.x.array - uh.x.array)), op=MPI.MAX)
+
+print(f"L2 Error: {global_error}")
+print(f"Max Error: {max_error}")
+```
+</div>
+<div v-click class="flex flex-col gap-4 items-center py-2">
+  <div class="text-center w-full">
+    <img
+      src="./images/screenshot12.png"
+      alt=""
+    />
+  </div>
+</div>
+</div>
+
+<!-- Inline style -->
+<style>
+.footnotes-sep {
+  @apply mt-5 opacity-10;
+}
+.footnotes {
+  @apply text-sm opacity-75;
+}
+.footnote-backref {
+  display: none;
+}
+</style>
+
+<!--
+Notes can also sync with clicks
+
+[click] This will be highlighted after the first click
+
+[click] Highlighted with `count = ref(0)`
+
+[click:3] Last click (skip two clicks)
+-->
+
+---
+class: bg-black/90 text-white
+---
+
+# 실행 Code
+<div class="grid grid-cols-2 gap-8 text-left">
+<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20">
+```python {all} twoslash\
+from dolfinx.io import XDMFFile
+
+# Create output directory
+output_dir = Path("complex_poisson_output")
+output_dir.mkdir(exist_ok=True)
+
+# We need to split complex function into real and imaginary parts
+# because Paraview doesn't natively support complex fields
+
+V_real = fem.functionspace(domain, ("Lagrange", 1))
+uh_real = fem.Function(V_real, name="uh_real")
+uh_imag = fem.Function(V_real, name="uh_imag")
+
+# Copy real and imaginary parts
+uh_real.x.array[:] = uh.x.array.real
+uh_imag.x.array[:] = uh.x.array.imag
+
+# Export real part
+with XDMFFile(domain.comm, output_dir / "uh_real.xdmf", "w") as xdmf:
+    xdmf.write_mesh(domain)
+    xdmf.write_function(uh_real)
+
+# Export imaginary part
+with XDMFFile(domain.comm, output_dir / "uh_imag.xdmf", "w") as xdmf:
+    xdmf.write_mesh(domain)
+    xdmf.write_function(uh_imag)
+
+if domain.comm.rank == 0:
+    print(f"\n✅ XDMF files exported to {output_dir}/")
+    print(f"   - uh_real.xdmf")
+    print(f"   - uh_imag.xdmf")
+    print(f"\nOpen these files in Paraview to visualize the solution.")
+```
+</div>
+<div class="flex-col justify-center space-y-6">
+<div class="text-sm opacity-100 p-4 border-l-4 border-green-500 bg-gray-800/30 rounded-r">
+<div v-click class="flex flex-col gap-4 items-center py-2">
+  <div class="text-center w-full">
+    <img
+      src="./images/screenshot11.png"
+      alt="Real Part"
+      class="w-3/5 mx-auto rounded shadow-sm border border-gray-700/50"
+    />
+  </div>
+
+  <div class="text-center w-full">
+    <img
+      src="./images/screenshot10.png"
+      alt="Imaginary Part"
+      class="w-3/5 mx-auto rounded shadow-sm border border-gray-700/50"
+    />
+  </div>
+</div>
+<img
+  v-click
+  src="./images/screenshot9.png"
+  class="absolute top-0 left-0 w-[500px] z-50 shadow-2xl rounded-lg border border-white/20"
+  alt=""
+/>
+</div>
+</div>
+</div>
+
+[Learn more](https://www.researchgate.net/publication/377241242_DOLFINx_The_next_generation_FEniCS_problem_solving_environment)
+
+<!-- Inline style -->
+<style>
+.footnotes-sep {
+  @apply mt-5 opacity-10;
+}
+.footnotes {
+  @apply text-sm opacity-75;
+}
+.footnote-backref {
+  display: none;
+}
+</style>
+
+<!--
+Notes can also sync with clicks
+
+[click] This will be highlighted after the first click
+
+[click] Highlighted with `count = ref(0)`
+
+[click:3] Last click (skip two clicks)
+-->
+
+---
 layout: center
 class: text-center
 ---
@@ -671,6 +1258,6 @@ class: text-center
 # Thank you for listening
 ### 발표를 들어주셔서 감사합니다.
 
-[Documentation](https://sli.dev) · [GitHub](https://github.com/uzaramen108) · [Showcases](https://sli.dev/resources/showcases)
+[Colab Scripts](https://github.com/uzaramen108) · [GitHub](https://github.com/uzaramen108) · [Showcases](https://sli.dev/resources/showcases)
 
 <PoweredBySlidev mt-10 />
