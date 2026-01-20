@@ -39,6 +39,7 @@ Poisson equation
   <a href="https://github.com/uzaramen108" target="_blank" class="slidev-icon-btn">
     <carbon:logo-github />
   </a>
+  21101565 박기성
 </div>
 
 <!--
@@ -112,7 +113,7 @@ highlighter: shiki
 
 <div>
 
-### 1. Governing Equation
+### 1. Test function 도입
 계산에 사용할 수 있게 다음 변환 과정을 거쳐줍니다.
 
 $$
@@ -133,7 +134,7 @@ $$
 
 <div v-click>
 
-### 2. Verification Strategy (in tutorial)
+### 2. Bilinear form & linear form
 Prescribe $u$ first, then derive $f$
 
 $$
@@ -464,7 +465,7 @@ class: bg-black/90 text-white
 highlighter: shiki
 ---
 
-# Poisson Equation
+# 실행 Code
 
 <div class="text-xl opacity-80 mb-8">
   FEniCS에서 Poisson equation 계산 (Variational Problem)
@@ -524,7 +525,7 @@ class: bg-black/90 text-white
 highlighter: shiki
 ---
 
-# Poisson Equation
+# 실행 Code
 
 <div class="text-xl opacity-80 mb-8">
   FEniCS에서 Poisson equation 계산 (Variational Problem)
@@ -583,12 +584,12 @@ class: bg-black/90 text-white
 highlighter: shiki
 ---
 
-# Poisson Equation
+# 실행 Code
 
 <div class="grid grid-cols-2 gap-8 text-left">
 
 <div class="overflow-y-auto shadow-lg rounded-md border border-gray-200/20 bg-[#1e1e1e] p-1">
-```python {all|1-4|5-8|9-13|14-22}
+```python {all}
 # XDMF/HDF5 파일로 저장 (ParaView 사용)
 from dolfinx import io
 from pathlib import Path
