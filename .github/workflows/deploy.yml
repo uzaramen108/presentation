@@ -15,7 +15,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Install Dependencies
         # ⚠️ 중요: 자네 프로젝트 폴더로 들어가서 설치해야 함
