@@ -1,0 +1,36 @@
+name: Deploy Slidev to Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        # ⚠️ 중요: 자네 프로젝트 폴더로 들어가서 설치해야 함
+        working-directory: ./250121_fenics_tutorial
+        run: npm install
+
+      - name: Build
+        # ⚠️ 중요: 폴더 안에서 빌드 + 리포지토리 이름 설정
+        working-directory: ./250121_fenics_tutorial
+        # 리포지토리 이름이 'presentation'인 것 같으니 base를 /presentation/으로 설정
+        run: npm run build -- --base /presentation/
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # ⚠️ 중요: 빌드 결과물(dist)도 하위 폴더 안에 생김
+          publish_dir: ./250121_fenics_tutorial/dist
