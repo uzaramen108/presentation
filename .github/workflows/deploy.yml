@@ -28,6 +28,9 @@ jobs:
         # 리포지토리 이름이 'presentation'인 것 같으니 base를 /presentation/으로 설정
         run: npm run build -- --base /presentation/
 
+      - name: Create .nojekyll to bypass Jekyll processing
+        run: touch ./250121_fenics_tutorial/dist/.nojekyll
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
