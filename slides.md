@@ -306,7 +306,7 @@ class: text-center
 highlighter: shiki
 ---
 
-# 6-1 ~ 6-2. 르장드르 함수 및 잠재 변수 치환
+# 6-1. 르장드르 함수 및 잠재 변수 치환
 <div class="text-xl opacity-80 mb-6">부등식 제약을 매끄러운 함수로 변환</div>
 
 <div class="text-sm mt-4 mb-4">
@@ -351,7 +351,7 @@ class: text-center
 highlighter: shiki
 ---
 
-# 6-3 ~ 6-4. Bregman 근위점 및 안장점 변환
+# 6-2. Bregman 근위점 및 안장점 변환
 <div class="text-xl opacity-80 mb-6">최적화 안정성 확보 및 라그랑지안 유도</div>
 
 <div class="text-sm mt-4 mb-4">
@@ -399,7 +399,7 @@ class: text-center
 highlighter: shiki
 ---
 
-# 6-5. 최종 약형식(Weak Form) 도출
+# 6-3. 최종 약형식(Weak Form) 도출
 <div class="text-xl opacity-80 mb-6">FEniCSx 구현을 위한 최종 연립방정식</div>
 
 <div class="text-sm mt-4 mb-4">
