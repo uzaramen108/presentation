@@ -1,327 +1,445 @@
 ---
-# try also 'default' to start simple
 theme: seriph
-# random image from a curated Unsplash collection by Anthony
-# like them? see https://unsplash.com/collections/94734566/slidev
 background: ./images/white_background.png
-# some information about your slides (markdown enabled)
-title: fenics tutorial 1
+title: LVPP 알고리즘을 활용한 장애물 문제 분석
 info: |
-  ## Slidev Starter Template
-  possion equation
-
-  Learn more at [Sli.dev](https://sli.dev)
-# apply UnoCSS classes to the current slide
+  ## Proximal Galerkin & Obstacle Problem
+  3월 17일 발표 자료
 class: text-center
-# https://sli.dev/features/drawing
 drawings:
   persist: false
-# slide transition: https://sli.dev/guide/animations.html#slide-transitions
-transition: none
-# enable MDC Syntax: https://sli.dev/features/mdc
+transition: slide-left
 mdc: true
-# duration of the presentation
-duration: 35min
+duration: 20min
 ---
 
-# FEniCS Tutorial
+# LVPP 알고리즘을 활용한
+# 장애물 문제(Obstacle Problem) 분석
 
-Navies-stokes equation
-
-<div @click="$slidev.nav.next" class="mt-12 py-1" hover:bg="white op-10">
-  Press Space for next page <carbon:arrow-right />
+<div class="text-xl opacity-80 mb-8">
+  Proximal Galerkin 기반의 구조 보존형 유한요소법
 </div>
 
 <div class="abs-br m-6 text-xl">
-  <button @click="$slidev.nav.openInEditor()" title="Open in Editor" class="slidev-icon-btn">
-    <carbon:edit />
-  </button>
-  <a href="https://github.com/uzaramen108" target="_blank" class="slidev-icon-btn">
-    <carbon:logo-github />
-  </a>
-  박기성 / 신강현
+  윤현준 / 박기성 / 박찬서 / 이민용
 </div>
 
-<!--
-The last comment block of each slide will be treated as slide notes. It will be visible and editable in Presenter Mode along with the slide. [Read more in the docs](https://sli.dev/guide/syntax.html#notes)
--->
-
 ---
-layout: center
+theme: seriph
 class: text-center
+highlighter: shiki
 ---
 
-# The PDE Problem: Navier-Stokes
+# 1. LVPP의 도입 배경
+
 <div class="text-xl opacity-80 mb-8">
-  비압축성 유체의 지배 방정식
+  부등식 제약 조건이 유발하는 Nonsmoothness
 </div>
 
-<div grid="~ cols-2 gap-8" class="text-left mt-8">
+<div grid="~ cols-2 gap-8" class="text-left">
 
-<div>
+<div v-click>
 
-### 1. Momentum & Continuity
-유체의 운동량 보존과 비압축성을 나타냅니다.
+### 1. 제약이 포함된 변분 문제
+과학과 공학의 다양한 분야에서는 부등식 제약 조건(Inequality constraints)을 포함하는 변분 문제가 빈번하게 발생합니다.
 
-$$
-\rho \left( \frac{\partial u}{\partial t} + u \cdot \nabla u \right) = \nabla \cdot \sigma(u, p) + f
-$$
-$$
-\nabla \cdot u = 0
-$$
-- $u$: 속도 (Velocity)
-- $p$: 압력 (Pressure)
-- $f$: 외력 (Body force)
+<div v-click class="mt-4 text-sm opacity-80">
+
+- 농도가 음수가 될 수 없음 $(C\ge 0)$
+- 몰 분율은 0부터 1 사이의 값을 지님 $(0\leq x_{i}\leq 1, \sum x_{i} = 1)$
+- 특정 stress 이상에서 소성 변형이 일어남 $(\nabla u \leq \phi)$
+
+</div>
 
 </div>
 
 <div v-click>
 
-### 2. Stress Tensor
-뉴턴 유체의 응력 텐서를 정의합니다.
+### 2. 기존 PDE 솔버의 한계
+부등식 제약은 본질적으로 **Nonsmoothness**를 유발하여 일반적인 편미분 방정식(PDE) 솔버로 풀기 매우 까다롭습니다.
 
-$$
-\sigma(u, p) = 2\mu\epsilon(u) - pI
-$$
-$$
-\epsilon(u) = \frac{1}{2}(\nabla u + (\nabla u)^T)
-$$
-- $2\mu\epsilon$: 유체의 변형에 의한 점성 마찰력
-- $-pI$: 압력에 의한 수직 응력
+<div class="mt-4 text-sm opacity-80">
+
+- **한계** : 최적성 조건이 연속 차원에서 충분히 매끄럽지 않음
+- **해결** : 이를 효율적으로 풀기 위해 **LVPP (Latent Variable Proximal Point)** 프레임워크 도입
+
+</div>
+
+<div class="w-full flex justify-center mt-6">
+  <img src="./images/image_1.png" alt="Obstacle Problem Membrane" class="w-full max-h-[160px] object-contain rounded shadow-sm" />
+</div>
+
+</div>
+</div>---
+theme: seriph
+class: text-center
+highlighter: shiki
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 2. 기존 수치해석의 한계
+
+<div class="text-xl opacity-80 mb-8">
+  메시 의존성과 비벡터공간 문제
+</div>
+
+<div grid="~ cols-2 gap-8" class="text-left">
+
+<div v-click>
+
+### 1. 메시 의존성 (Mesh-dependence)
+부등식 제약 문제는 연속 차원에서 충분히 매끄럽지 않습니다. 
+
+<div v-click class="mt-4 text-sm opacity-80">
+
+- **한계점** : 연속 수준에서 Semismooth Newton 방법 등을 바로 적용하기 어려움.
+- **성능 저하** : 이산화 과정에서 격자(Mesh)를 세밀하게 나누거나 고차(High-order) 다항식을 사용할수록, 선형 시스템을 푸는 반복 연산 횟수가 기하급수적으로 폭증함.
+
+</div>
+
+</div>
+
+<div v-click>
+
+### 2. 비벡터공간 (Non-vector space)
+부등식 제약 때문에 해를 만족하는 집합(Feasible set $K$)은 벡터 공간을 이루지 못합니다.
+
+<div class="mt-4 text-sm opacity-80">
+
+- **제약 이탈** : 해를 선형 결합하거나 상수를 곱하면 제약 조건<br>($u \ge \phi$)을 벗어날 수 있음.
+- **적용 불가** : 따라서 표준 유한요소법(FEM)의 기저 함수 선형 결합이나, Newton 방법의 가산적 업데이트(Additive update) 방식을 직접 적용할 수 없음.
+
+</div>
+
+<div class="w-full flex justify-center mt-6">
+  <img src="./images/image_2.png" alt="Mesh Dependence Chart" class="w-full max-h-[160px] object-contain rounded shadow-sm" />
+</div>
 
 </div>
 </div>
 
 ---
-layout: center
+theme: seriph
+class: text-center
+highlighter: shiki
 ---
 
-# Step 1: 가짜 속도 $u^*$ 구하기 (1/3)
-<div class="text-xl opacity-80 mb-8">기본 지배 방정식과 시간 이산화</div>
+# 3. LVPP의 핵심 아이디어
 
-<div class="text-sm mt-8">
-
-### 1. 원래의 운동량 보존 방정식 (강형, Strong Form)
-가장 기본이 되는 나비에-스토크스 방정식입니다.
-$$ \rho \frac{\partial u}{\partial t} + \rho (u \cdot \nabla u) = \nabla \cdot (2\mu\epsilon(u)) - \nabla p + f $$
-
-<br>
-
-### 2. 시간 이산화 (Time Discretization)
-컴퓨터가 계산할 수 있도록 시간 미분 $\frac{\partial u}{\partial t}$를 $\frac{u^* - u^n}{\Delta t}$ (코드의 `(u - u_n) / k`)로 쪼갭니다.
-이때, 점성항에는 현재와 과거의 평균을 쓰는 **Crank-Nicolson (CN) 기법**을 적용하여 수치적 안정성을 높입니다.
-$$ \rho \frac{u^* - u^n}{\Delta t} + \rho (u \cdot \nabla u) - \nabla \cdot \left(2\mu\epsilon\left(\frac{u^* + u^n}{2}\right)\right) + \nabla p^n = f $$
-
+<div class="text-xl opacity-80 mb-8">
+  잠재 변수와 매끄러운 좌표 변환
 </div>
 
----
-layout: center
----
+<div grid="~ cols-2 gap-8" class="text-left">
 
-# Step 1: 가짜 속도 $u^*$ 구하기 (2/3)
-<div class="text-xl opacity-80 mb-8">대류항 선형화 및 부분 적분(약형 변환)</div>
-
-<div class="text-sm mt-8">
-
-### 3. 대류항의 선형화 (Linearization of Convection)
-비선형항인 $u \cdot \nabla u$를 해결해야 합니다. 속도 벡터 두 개가 곱해져 있어 방정식이 안 풀리므로, 앞의 $u$는 과거 데이터를 이용해 추정치(외삽)를 만들고, 뒤의 $\nabla u$는 미분항에 CN 기법을 씁니다.
-* **앞부분 (Adams-Bashforth 외삽)**: $u_{AB} = \frac{3}{2}u^n - \frac{1}{2}u^{n-1}$
-* **뒷부분 (Crank-Nicolson 미분)**: $\nabla u_{CN} = \nabla\left(\frac{u^* + u^n}{2}\right)$
-
-<br>
-
-### 4. 부분 적분 (Integration by Parts)
-양변에 테스트 함수 $v$를 곱하고 전체 영역에 대해 적분합니다. 이때 2계 미분인 점성항과 1계 미분인 압력항의 미분 차수를 낮춰줍니다.
-* **점성항 변환**: $\int -\nabla \cdot (2\mu\epsilon) \cdot v \Rightarrow \int \mu \nabla u : \nabla v$
-* **압력항 변환**: $\int \nabla p \cdot v \Rightarrow \int -p (\nabla \cdot v)$
-
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# Step 1: 가짜 속도 $u^*$ 구하기 (3/3)
-<div class="text-xl opacity-80 mb-8">최종 수식과 코드 매칭</div>
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-### 5. 최종 수식 ($F_1 = 0$)
-앞선 시간 이산화, 선형화, 약형 변환을 모두 합치면 코드와 완벽히 일치하는 최종 잔차(Residual) 방정식이 됩니다.
-
-$$
-\begin{aligned}
-F_1 &= \int \rho \frac{u^* - u^n}{\Delta t} \cdot v
-&+ \int \rho (u_{AB} \cdot \nabla u_{CN}) \cdot v
-&+ \int \mu \nabla u_{CN} : \nabla v
-\end{aligned}
-$$
-$$
-\begin{aligned}
-&- \int p^n (\nabla \cdot v)
-&+ \int f \cdot v = 0
-\end{aligned}
-$$
-
-(여기서 $u^*$는 미지수 $u$를 의미합니다.)
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-12">
-
-```python {all} twoslash
-# Step 1: Tentative velocity step (u_s)
-
-# 1. 시간 미분항
-F1 = rho / k * dot(u - u_n, v) * dx
-
-# 2. 대류항 (Adams-Bashforth + Crank-Nicolson)
-F1 += inner(dot(1.5 * u_n - 0.5 * u_n1, 
-                0.5 * nabla_grad(u + u_n)), v) * dx
-
-# 3. 점성항 (부분적분 완료, CN 적용)
-# 4. 압력항 (부분적분 완료, 이전 스텝 p_ 사용)
-F1 += 0.5 * mu * inner(grad(u + u_n), grad(v)) * dx \
-      - dot(p_, div(v)) * dx
-
-# 5. 외력항 (f = 0)
-F1 += dot(f, v) * dx
-
-a1 = form(lhs(F1))
-L1 = form(rhs(F1))
-```
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# Step 2: 압력 보정 (Pressure Correction)
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-### 1. 수식 변환 과정
-진짜 속도와 가짜 속도의 차이는 "새롭게 업데이트될 압력의 구배(기울기)" 때문에 발생합니다.
-$$ \rho \frac{u^{n+1} - u^*}{\Delta t} = -\nabla (p^{n+1} - p^n) $$
-
-양변에 발산($\nabla \cdot$)을 취하고, $\nabla \cdot u^{n+1} = 0$을 대입하면 **poisson equation** 형태가 됩니다. (여기서 $\phi = p^{n+1} - p^n$ 이라 둡니다).
-$$ \nabla^2 \phi = \frac{\rho}{\Delta t} \nabla \cdot u^* $$
-
-### 2. 약형 (Weak Form) 변환
-테스트 함수 $q$를 곱하고 좌변에 부분 적분을 적용합니다.
-$$ \int \nabla \phi \cdot \nabla q = -\int \frac{\rho}{\Delta t} (\nabla \cdot u^*) q $$
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-12">
-
-```python {all} twoslash
-# Step 2: Pressure correction step (phi)
-# 목표: 압력 변화량(증분) phi 를 구하기
-
-# 좌변: 압력 증분 phi(코드의 p)와 q의 내적
-# (Laplacian의 부분적분 형태)
-a2 = form(dot(grad(p), grad(q)) * dx)
-
-# 우변: 가짜 속도(u_s)의 발산(div)
-# k 는 dt를 의미함
-L2 = form(-rho / k * dot(div(u_s), q) * dx)
-
-# solver2.solve(b2, phi.x.petsc_vec)
-# 결과적으로 p_.x += phi.x 를 통해 압력 업데이트
-```
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# Step 3: 최종 속도 업데이트
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-### 1. 속도 보정 수식 (Velocity Projection)
-Step 2에서 구한 식을 다시 $u^{n+1}$에 대해 정리합니다.
-$$ u^{n+1} = u^* - \frac{\Delta t}{\rho} \nabla \phi $$
-
-### 2. 약형 (Weak Form) 변환
-전체 식에 밀도 $\rho$와 테스트 함수 $v$를 곱하여 적분형(질량 행렬 형태)으로 만듭니다.
-$$ \int \rho u^{n+1} \cdot v = \int \rho u^* \cdot v - \int \Delta t \nabla \phi \cdot v $$
-
-- 좌변: 구하려는 진짜 속도 $u^{n+1}$ (코드의 `u`)
-- 우변 첫 번째: 이미 구한 가짜 속도 $u^*$ (코드의 `u_s`)
-- 우변 두 번째: 이미 구한 압력 증분의 구배 $\nabla \phi$
-
-이 단계를 통과한 $u^{n+1}$은 완벽하게 비압축성 조건을 만족하게 됩니다.
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-12">
-
-```python {all} twoslash
-# Step 3: Velocity correction step (u_)
-# 목표: 최종 속도 u_ 구하기
-
-# 좌변: 최종 속도 시스템 (Mass matrix)
-a3 = form(rho * dot(u, v) * dx)
-
-# 우변: 가짜 속도(u_s)에서 압력 변화 효과 빼기
-# k = dt, phi = 압력 증분
-L3 = form(rho * dot(u_s, v) * dx \
-          - k * dot(nabla_grad(phi), v) * dx)
-
-# solver3.solve(b3, u_.x.petsc_vec)
-# 마침내 1개 타임스텝 종료!
-```
-</div>
-
----
-layout: center
----
-
-# Problem Setup: Flow Around a Cylinder
-<div class="text-xl opacity-80 mb-6">DFG 2D-3 Benchmark 시뮬레이션 개요</div>
-
-<div class="text-sm">
-<div grid="~ cols-2 gap-4" class="mt-4 mb-8">
 <div>
 
-### 🔹 물리적 파라미터 및 경계 조건
-- **동점성계수**: $\nu = \frac{\mu}{\rho} = 0.001$
-- **벽면 및 원통**: No-slip 조건 ($u = 0$)
-- **최대 유속**: 채널 중앙($y = 0.41/2$)에서 $1.5$
+### 1. 매끄러운 좌표 변환
+제약 조건 집합 $K$를 직접 다루는 대신, 제한이 없는 무한 차원의 잠재 함수 공간(Latent function space) $\psi$를 도입합니다.
 
-</div>
-<div>
+<div class="mt-4 text-sm opacity-80">
 
-### 🔹 유입구(Inflow) 유속 분포
-시간에 따라 변하는(Unsteady) 포물선 형태의 유속이 주어집니다.
-
-$$u(x,y,t) = \left( \frac{4Uy(0.41 - y)}{0.41^2}, 0 \right)$$
-$$U(t) = 1.5 \sin(\pi t / 8)$$
-
-</div>
+- **Legendre function** : 르장드르 함수 $R(u)$를 이용하여 제약 공간과 잠재 공간을 연결하는 매끄러운 좌표 변환을 생성합니다.
+- **변수 정의** : $\psi = \nabla R(u)$
+- **예시($u\ge \phi$의 경우)** : $R(u) = (u-\phi)\ln(u-\phi)-(u-\phi)$
 </div>
 
 </div>
 
-<div class="w-full flex justify-center mt-4">
-  <img src="./images/screenshot1.png" alt="Computational Geometry" class="w-full max-h-[250px] object-contain rounded shadow-sm" />
+<div v-click>
+
+### 2. 구조 보존 (Structure-preserving)
+잠재 변수에서 물리적 변위 $u$로 돌아오는 역변환 식을 적용합니다.
+
+$$
+u = \nabla R^*(\psi) = \phi + e^\psi
+$$
+
+<div class="mt-4 text-sm opacity-80">
+
+- **자동 제약 만족** : 지수 함수($e^\psi > 0$)가 포함되어 있어, $\psi$가 어떤 실수 값을 갖더라도 $u$는 무조건 장애물 $\phi$보다 큽니다.
+- **알고리즘적 이점** : 제약이 물리적 벽처럼 보존되므로, 표준 FEM 기저 함수의 선형 결합 및 가산적 업데이트(Additive update)가 가능해집니다.
+
+</div>
+
+<div class="w-full flex justify-center mt-6">
+  <img src="./images/image_3.png" alt="Coordinate Transformation" class="w-full max-h-[140px] object-contain rounded shadow-sm" />
+</div>
+
+
+</div>
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 4. LVPP의 주요 특징
+<div grid="~ cols-2 gap-8" class="text-left">
+
+<div class="mt-4 text-sm opacity-80">
+
+### 👍 장점 (Pros)
+* **무한 차원 정식화**: 격자 크기(Mesh size)나 이산화 차수(Polynomial order)에 관계없이 성능이 유지되는 메시 및 차수 독립성을 가집니다.
+* **투영(Projection) 불필요**: 이산 수준에서 점별 제약(Pointwise constraints)을 강제하는 단순한 메커니즘을 제공하여, 엄격하게 제약조건을 준수합니다.
+* **구현 용이성 및 호환성**: 특수한 이산화 기법 없이, 고차 수치 방법 및 FEniCSx와 같은 표준 유한요소 라이브러리와 완벽하게 호환됩니다.
+* **강건한 수치 성능**: 파라미터를 무한대로 보내는 과정에 의존하지 않고 안정적으로 수렴합니다.
+
+</div>
+
+<div v-click>
+<div class="mt-4 text-sm opacity-80">
+
+### 👎 단점 및 고려사항 (Trade-offs)
+* **근위 매개변수 $\alpha_k$ 설정 딜레마**:
+  * 최적화 가속을 위해 $\alpha_k$를 지수적으로 너무 공격적으로 키우면, 내부 비선형 PDE 서브프라블럼이 악조건(Ill-conditioned) 상태가 되어 Newton 솔버 수렴이 어려워집니다.
+  * 반대로 너무 천천히 키우면 전체 LVPP 반복 횟수가 늘어나는 트레이드오프가 존재합니다.
+* **연산 비용 증가**: 선형 시스템을 한 번 푸는 것으로 끝나지 않고, 매 스텝마다 비선형 대수 방정식 시스템을 연속적으로 반복해서 풀어야 하므로 초기 세팅 및 단계별 연산 비용이 높습니다.
+
+</div>
+
+<div class="w-full flex justify-center mt-6">
+  <img src="./images/image_3.png" alt="Coordinate Transformation" class="w-full max-h-[140px] object-contain rounded shadow-sm" />
+</div>
+
+
+</div>
+</div>
+
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 5. 장애물 문제(Obstacle Problem) 소개
+<div class="text-xl opacity-80 mb-6">Dirichlet Energy 최소화 수식 모델링</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click >
+
+### 🔹 원래의 문제 정의
+장애물 문제는 다음의 디리클레 에너지 최소화 식으로 나타납니다 .
+첫 번째 항은 막의 탄성 에너지, 두 번째 항은 외력을 의미합니다 .
+
+$$
+J(u) = \frac{1}{2} \int_\Omega \nabla u \cdot \nabla u \, dx - \int_\Omega f u \, dx
+$$
+
+막이 장애물 $\phi$를 통과할 수 없으므로 $u \ge \phi$라는 위치 제약조건이 발생하며, 최종 목표는 다음 제약 조건을 만족하는 해를 찾는 것입니다 .
+
+$$
+\min_{u \in K} J(u), \quad K = \{v \in H_0^1(\Omega) \mid v \ge \phi\}
+$$
+
+</div>
+<div v-click >
+
+### 🔹 조건 부연 설명
+* **Feasible Set $K$**: 부등식 제약 조건을 만족하는 해의 집합을 의미합니다 .
+* **경계 조건**: $\partial\Omega$ (경계면)에서 $u = 0$ 이고, 장애물 위에 놓인 상태를 가정합니다 .
+* 제약 조건이 없다면 1차 변분을 통해 푸아송 방정식(Poisson equation)의 약형(Weak form)과 수학적으로 완전히 동일해집니다 .
+
+</div>
+</div>
+</div>
+
+<div v-click class="w-full flex justify-center mt-2">
+  <img src="./images/image_4.png" alt="Dirichlet Energy Minimization" class="w-full max-h-[180px] object-contain rounded shadow-sm" />
+</div>
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 5-1. 장애물 및 막의 수학적 정의
+<div class="text-xl opacity-80 mb-6">벤치마크 모델의 도메인 및 장애물 수식</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click>
+
+### 🔹 도메인 및 외력 조건
+막이 존재하는 2차원 공간 $\Omega$와 외력 $f$를 다음과 같이 정의합니다 .
+
+$$
+\Omega = \{(x, y) \in \mathbb{R}^2 : 0 < r < 1\}, \quad r^2 = x^2 + y^2
+$$
+$$
+f \equiv 0
+$$
+
+### 🔹 장애물 $\phi(x, y)$의 수식
+막이 뚫을 수 없는 장애물은 중심부 반구 형태와 매끄럽게 이어지는 바깥 부분으로 정의됩니다 .
+
+$$
+\phi(x,y) = \begin{cases} \sqrt{1/4 - r^2} & r \le b, \\ d + b^2/d - br/d & r > b, \end{cases}
+$$
+※ $b = 9/20, \quad d = \sqrt{1/4 - b^2}$ 
+
+</div>
+<div v-click class="flex flex-col items-center">
+
+### 🔹 장애물 단면 및 막의 거동
+* 장애물의 중심부($r \le b$)는 위로 둥글게 솟아오른 구면을 이룹니다 .
+* 탄성 막($u$)은 이 장애물 표면($\phi$)을 통과할 수 없으며 이는  $u \ge \phi$ 제약으로 나타납니다.
+
+<div class="w-full flex flex-col items-center justify-center mt-6">
+  <img src="./images/image_1.png" alt="Obstacle Cross Section" class="w-full max-h-[180px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-2">장애물 $\phi(x,y)$의 2D 단면 및 막의 접촉 형태</div>
+</div>
+
+</div>
+</div>
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 6-1 ~ 6-2. 르장드르 함수 및 잠재 변수 치환
+<div class="text-xl opacity-80 mb-6">부등식 제약을 매끄러운 함수로 변환</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click >
+
+### 🔹 섀넌 엔트로피 기반 변환
+부등식 제약 조건 $u - \phi > 0$을 풀기 위해 섀넌 엔트로피(Shannon entropy) 기반의 르장드르 함수 $R(u)$를 정의합니다.
+
+$$
+R(u) = (u - \phi) \ln(u - \phi) - (u - \phi)
+$$
+
+### 🔹 잠재 변수 유도 및 역치환
+위 식을 미분하여 제약이 없는 새로운 잠재 변수(latent constant)<br> $\psi$를 정의합니다. 이를 역으로 치환하면 물리적 해 $u$와 잠재 변수 $\psi$ 사이의 관계식이 도출됩니다.
+
+$$
+\psi = \nabla R(u) = \ln(u - \phi) \Rightarrow  u = \nabla R^*(\psi) = \phi + e^\psi
+$$
+
+**결과**: $\psi$가 모든 실수 값을 가질 수 있지만, 역치환된 변위 $u$는 항상 장애물보다 큰 값을 유지하게 됩니다.
+
+</div>
+<div v-click >
+
+<div class="w-full flex flex-col items-center">
+    <div class="text-xs opacity-70 mb-1">변환 전: 하한선이 존재하는 부등식 제약 공간 ($u \ge \phi$)</div>
+    <img src="./images/image_1.png" alt="Before Legendre" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  </div>
+
+  <div class="w-full flex flex-col items-center">
+    <div class="text-xs opacity-70 mb-1">변환 후: 제약이 없는 무한한 실수 공간 ($\psi \in \mathbb{R}$)</div>
+    <img src="./images/image_2.png" alt="After Legendre" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  </div>
+
+</div>
+</div>
+</div>
+
+<div v-click class="w-full flex justify-center mt-2">
+  <img src="./images/image_4.png" alt="Dirichlet Energy Minimization" class="w-full max-h-[180px] object-contain rounded shadow-sm" />
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 6-3 ~ 6-4. Bregman 근위점 및 안장점 변환
+<div class="text-xl opacity-80 mb-6">최적화 안정성 확보 및 라그랑지안 유도</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click >
+
+### 🔹 Bregman Proximal Point Algorithm
+원래의 최소화 문제를 **브레그만 발산(Bregman Divergence)** $D_R$을 이용해 변환합니다 . 이는 유클리드 거리 기반 방법을 보다 일반적인 기하 구조로 확장한 것입니다 .
+
+$$
+D_R(a,b) = R(a) - R(b) - \nabla R(b) \cdot (a-b)
+$$
+
+$$
+u^k \in \arg \min_{u \in K} \left[ J(u) + \alpha_k^{-1} \int_\Omega D_R(u, u^{k-1}) \, dx \right]
+$$
+
+* **역할**: $D_R$은 거리와 유사한 역할을 하여, 이전 해 $u^{k-1}$에서 너무 멀리 가지 않도록 제한(Penalty)합니다 .
+* **효과**: 각 반복(Iteration)마다 매개변수 $\alpha_k$를 조절함으로써 알고리즘의 **높은 안정성과 빠른 수렴**을 동시에 확보합니다 .
+
+</div>
+<div v-click >
+
+### 🔹 안장점(Saddle Point) 문제로의 변환
+LVPP 알고리즘의 핵심은 부등식 문제를 풀기 쉬운 **안장점 문제**로 바꾸는 것입니다 . 
+
+* **Convex Conjugate**: 볼록 켤레 성질 <br>$R(u) = \sup_\psi (\langle \psi, u \rangle - R^*(\psi))$을 적용합니다 .
+* **상수항 제거 및 치환**: 최적화에 영향을 주지 않는 상수항 $R(u^{k-1})$을 제거하고, $\psi$에 대해 변수 치환을 수행합니다 .
+
+위 과정을 거치면 다음과 같은 라그랑지안 $L(u, \psi)$이 도출됩니다 .
+
+$$
+L(u, \psi) = J(u) + \alpha_k^{-1} \int_\Omega (\psi \cdot u - R^*(\psi + \nabla R(u^{k-1}))) \, dx
+$$
+
+최종적으로 $\min_u \max_\psi L(u, \psi)$ 구조에서 편미분($\frac{\partial L}{\partial \psi}=0, \frac{\partial L}{\partial u}=0$)을 통해 안장점 조건을 찾습니다 .
+
+</div>
+</div>
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 6-5. 최종 약형식(Weak Form) 도출
+<div class="text-xl opacity-80 mb-6">FEniCSx 구현을 위한 최종 연립방정식</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click >
+
+### 🔹 에너지 균형 및 제약 조건 매핑
+안장점의 편미분($\frac{\partial L}{\partial \psi} = 0$, $\frac{\partial L}{\partial u} = 0$) 결과를 정리하면 다음 두 식을 얻습니다 .
+
+$$
+u^k - \nabla R^*(\psi^k) = 0 \quad \text{--- (제약 조건 매핑)}
+$$
+$$
+\alpha_k J'(u^k) + \psi^k = \psi^{k-1} \quad \text{--- (에너지 균형)}
+$$
+
+</div>
+<div v-click >
+
+### 🔹 최종 연립 약형식 (Weak Form)
+위 식에 시험 함수 $v, w$를 곱하고 푸아송 약형식($J'(u^k)$)을 대입하여 연립 비선형 편미분 방정식의 약형식을 완성합니다 .
+
+$$
+(1) \quad \alpha_k(\nabla u^k, \nabla v) + (\psi^k, v) = \alpha_k(f, v) + (\psi^{k-1}, v)
+$$
+$$
+(2) \quad (u^k, w) - (\phi + e^{\psi^k}, w) = 0
+$$
+
+결과적으로 다루기 힘들었던 부등식 최적화 문제가, FEniCSx로 구현하기 쉬운 **부드러운 안장점 문제**로 깔끔하게 변환되었습니다 .
+
+</div>
+</div>
 </div>
 
 ---
@@ -329,76 +447,37 @@ layout: two-cols
 layoutClass: gap-8
 ---
 
-# 1. 라이브러리 Import
+# 7-1. github 코드 실행 
 
 ::left::
 
 <div class="text-sm mt-4">
 
-* **`FacetNormal`**: 원 표면에서의 법선벡터.
-* **`Measure`**: 항력/양력 공식에서 원통 표면 $\partial\Omega_S$에 대해서만 선적분을 수행하기 위한 적분 측도 ds를 생성합니다.
-* **`assemble_scalar`**: 기호로 정의된 $C_D$와 $C_L$의 적분식을 실제 숫자로 계산(Assembly)하여 값을 뽑아냅니다.
-* **`bb_tree`**: 공간 탐색을 빠르게 수행하기 위해 전체 메시(Mesh) 영역을 계층적인 상자 형태로 분할하는 경계 상자 트리(Bounding Box Tree) 자료구조를 생성합니다.
-* **`compute_collisions_points`**: 생성된 트리 구조를 바탕으로, 우리가 압력을 측정하고자 하는 특정 좌표(점)가 포함될 가능성이 있는 후보 셀(Cell)들을 1차적으로 빠르게 걸러냅니다.
-* **`compute_colliding_cells`**: 1차로 걸러진 후보 셀들 중에서 해당 좌표가 수학적으로 정확히 어느 셀 안에 위치하는지 최종적으로 판별하고 확정합니다.
-* **`apply_lifting`**: 행렬 방정식($Ax = b$)에 고정된 경계 조건(Dirichlet BC, 예: 벽면에서 유속 0)을 적용하는 수치해석 기법입니다.
+### 🔹 예제 파일 구성
+예제 파일은 다음과 같이 구성되어있으며 터미널(bash)에서 명령어로  실행합니다(docker).
+
+### 🔹 각 파일 개요
+* **generate_mesh_gmsh.py**: 장애물 및 막 메쉬 형성
+* **compare_all.py**: 각 obstacle_-.py를 호출하여 계산된 결과를 비교.
+* **obstacle_-.py**: 각 코드에 따른 솔버를 통하여 장애물 문제를 계산 및 저장.
 </div>
 
 ::right::
-
+<div v-click>
 <div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
 
-```python {all} twoslash
-%%fenicsx -np 4
-
-import gmsh
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-
-from mpi4py import MPI
-from petsc4py import PETSc
-
-from basix.ufl import element
-
-from dolfinx.fem import (
-    Constant,
-    Function,
-    functionspace,
-    assemble_scalar,
-    dirichletbc,
-    extract_function_spaces,
-    form,
-    locate_dofs_topological,
-    set_bc,
-)
-from dolfinx.fem.petsc import (
-    apply_lifting,
-    assemble_matrix,
-    assemble_vector,
-    create_vector,
-    create_matrix,
-    set_bc,
-)
-from dolfinx.geometry import bb_tree, compute_collisions_points, compute_colliding_cells
-from dolfinx.io import VTXWriter, XDMFFile
-from dolfinx.io import gmsh as gmshio
-from ufl import (
-    FacetNormal,
-    Measure,
-    TestFunction,
-    TrialFunction,
-    as_vector,
-    div,
-    dot,
-    dx,
-    inner,
-    lhs,
-    grad,
-    nabla_grad,
-    rhs,
-)
+```bash {all} twoslash
+python3 generate_mesh_gmsh.py
+python3 compare_all.py -P ./meshes/disk_1.xdmf -O coarse
+python3 compare_all.py -P ./meshes/disk_2.xdmf -O medium
+python3 compare_all.py -P ./meshes/disk_3.xdmf -O fine
 ```
+
+</div>
+
+<div class="w-full flex justify-center mt-2">
+  <img src="./images/image_4.png" alt="Dirichlet Energy Minimization" class="w-full max-h-[180px] object-contain rounded shadow-sm" />
+</div>
 </div>
 
 ---
@@ -406,292 +485,94 @@ layout: two-cols
 layoutClass: gap-8
 ---
 
-# 2. 메시(Mesh) 생성
+<script setup>
+import { ref } from 'vue'
+const isExpanded = ref(false)
+</script>
+
+# 7-2. github 코드 실행 
+generate_mesh_gmsh.py
 
 ::left::
 
-<div class="text-[13px] mt-4">
+<div class="text-sm mt-4">
 
-채널 내부에 원통이 있는 DFG 2D-3 벤치마크의 형상을 `gmsh` API를 이용해 직접 구축합니다.
-
-### 🔹 형상 정의 및 경계 마킹
-- 사각형(`addRectangle`)에서 원통(`addDisk`)을 빼는(`cut`) 방식으로 유체 영역을 정의합니다.
-- 입구, 출구, 벽면, 원통 표면에 각각 고유한 마커(Marker)를 부여하여 추후 경계 조건 적용을 용이하게 합니다.
-
-
-### 🔹 해상도 조절 (Mesh Refinement)
-유동의 변화가 가장 극심한 곳은 **원통 주변(경계층) 및 후류(Wake)**입니다. 
-이를 정확히 포착하기 위해 `Distance` 및 `Threshold` 필드를 사용하여 원통 근처(`res_min`)는 촘촘하게, 벽면으로 갈수록 성기게 메시를 구성했습니다.
-
-
-
+#### 🔹 도메인 생성 (generate_disk)
+* `gmsh.model.occ.addDisk`: 중심이 (0,0,0)이고 반지름이 1인 2D 원형 막(Disk)의 기하학적 형태를 생성합니다.<br><br>
+#### 🔹 격자 세분화
+* `mesh.refine()`: `refinement_level` 횟수만큼 격자를 반복해서 세분화합니다. 이를 통해 앞서 언급한 **메시 독립성(Mesh-independence) 검증**을 위한 다양한 해상도(coarse ~ fine)의 격자들을 준비합니다.<br><br>
+#### 🔹 출력
+* 맨 아래의 반복문(`for i in range(4)`)을 통해 4단계의 각기 다른 조밀도(레벨 0~3)를 가진 격자 파일들을 생성, 이후 최적화 솔버들이 불러와서 계산할 수 있도록 `.xdmf` 확장자로 데이터를 저장합니다.
 </div>
 
 ::right::
 
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
+<button @click="isExpanded = true" class="mt-8 px-4 py-2 bg-gray-800 text-white text-sm rounded shadow-md hover:bg-gray-700 transition-all flex items-center gap-2">
+  <carbon:zoom-in /> 코드 전체화면으로 보기
+</button>
 
-```python {all} twoslash
-# ============================================
-# Mesh Generation with gmsh
-# ============================================
-gmsh.initialize()
+<div :class="isExpanded ? 'fixed inset-4 z-50 bg-white shadow-2xl rounded-xl p-8 overflow-y-auto border border-gray-300' : 'overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8'">
 
-L = 2.2
-H = 0.41
-c_x = c_y = 0.2
-r = 0.05
-gdim = 2
-mesh_comm = MPI.COMM_WORLD
-model_rank = 0
+  <div v-show="isExpanded" class="flex justify-between items-center mb-4 border-b pb-4">
+    <div class="text-xl font-bold text-gray-800">generate_mesh_gmsh.py (전체 코드)</div>
+    <button @click="isExpanded = false" class="px-4 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-all text-sm flex items-center gap-1">
+      <carbon:close /> 닫기
+    </button>
+  </div>
 
-if mesh_comm.rank == model_rank:
-    rectangle = gmsh.model.occ.addRectangle(0, 0, 0, L, H, tag=1)
-    obstacle = gmsh.model.occ.addDisk(c_x, c_y, 0, r, r)
+  ```python {all} twoslash
+  from pathlib import Path
 
-if mesh_comm.rank == model_rank:
-    fluid = gmsh.model.occ.cut([(gdim, rectangle)], [(gdim, obstacle)])
-    gmsh.model.occ.synchronize()
+  from mpi4py import MPI
 
-fluid_marker = 1
-if mesh_comm.rank == model_rank:
-    volumes = gmsh.model.getEntities(dim=gdim)
-    assert len(volumes) == 1
-    gmsh.model.addPhysicalGroup(volumes[0][0], [volumes[0][1]], fluid_marker)
-    gmsh.model.setPhysicalName(volumes[0][0], fluid_marker, "Fluid")
+  import dolfinx.io
+  import gmsh
+  import packaging.version
 
-inlet_marker, outlet_marker, wall_marker, obstacle_marker = 2, 3, 4, 5
-inflow, outflow, walls, obstacle = [], [], [], []
-if mesh_comm.rank == model_rank:
-    boundaries = gmsh.model.getBoundary(volumes, oriented=False)
-    for boundary in boundaries:
-        center_of_mass = gmsh.model.occ.getCenterOfMass(boundary[0], boundary[1])
-        if np.allclose(center_of_mass, [0, H / 2, 0]):
-            inflow.append(boundary[1])
-        elif np.allclose(center_of_mass, [L, H / 2, 0]):
-            outflow.append(boundary[1])
-        elif np.allclose(center_of_mass, [L / 2, H, 0]) or np.allclose(
-            center_of_mass, [L / 2, 0, 0]
-        ):
-            walls.append(boundary[1])
-        else:
-            obstacle.append(boundary[1])
-    gmsh.model.addPhysicalGroup(1, walls, wall_marker)
-    gmsh.model.setPhysicalName(1, wall_marker, "Walls")
-    gmsh.model.addPhysicalGroup(1, inflow, inlet_marker)
-    gmsh.model.setPhysicalName(1, inlet_marker, "Inlet")
-    gmsh.model.addPhysicalGroup(1, outflow, outlet_marker)
-    gmsh.model.setPhysicalName(1, outlet_marker, "Outlet")
-    gmsh.model.addPhysicalGroup(1, obstacle, obstacle_marker)
-    gmsh.model.setPhysicalName(1, obstacle_marker, "Obstacle")
-
-res_min = r / 3
-if mesh_comm.rank == model_rank:
-    distance_field = gmsh.model.mesh.field.add("Distance")
-    gmsh.model.mesh.field.setNumbers(distance_field, "EdgesList", obstacle)
-    threshold_field = gmsh.model.mesh.field.add("Threshold")
-    gmsh.model.mesh.field.setNumber(threshold_field, "IField", distance_field)
-    gmsh.model.mesh.field.setNumber(threshold_field, "LcMin", res_min)
-    gmsh.model.mesh.field.setNumber(threshold_field, "LcMax", 0.25 * H)
-    gmsh.model.mesh.field.setNumber(threshold_field, "DistMin", r)
-    gmsh.model.mesh.field.setNumber(threshold_field, "DistMax", 2 * H)
-    min_field = gmsh.model.mesh.field.add("Min")
-    gmsh.model.mesh.field.setNumbers(min_field, "FieldsList", [threshold_field])
-    gmsh.model.mesh.field.setAsBackgroundMesh(min_field)
-
-if mesh_comm.rank == model_rank:
-    gmsh.option.setNumber("Mesh.Algorithm", 8)
-    gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 2)
-    gmsh.option.setNumber("Mesh.RecombineAll", 1)
-    gmsh.option.setNumber("Mesh.SubdivisionAlgorithm", 1)
-    gmsh.model.mesh.generate(gdim)
-    gmsh.model.mesh.setOrder(2)
-    gmsh.model.mesh.optimize("Netgen")
-
-mesh_data = gmshio.model_to_mesh(gmsh.model, mesh_comm, model_rank, gdim=gdim)
-mesh = mesh_data.mesh
-assert mesh_data.facet_tags is not None
-ft = mesh_data.facet_tags
-ft.name = "Facet markers"
-
-if mesh_comm.rank == 0:
-    print(f"✅ Mesh created: {mesh.topology.index_map(gdim).size_global} cells")
-```
-</div>
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# 2.5 물리적 파라미터 및 경계 조건
-<div class="text-xl opacity-80 mb-6">Taylor-Hood 요소 공간 정의 및 Dirichlet BC 적용</div>
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-메시가 준비되었으니, 유체의 물성치를 정의하고 편미분 방정식을 풀기 위한 함수 공간(Function Space)과 경계 조건을 설정합니다.
-
-### 🔹 물리적 파라미터 및 함수 공간
-- **물성치**: 밀도($\rho$)와 동점성계수($\mu$)를 설정합니다. (제시된 코드의 $\mu=2$는 물의 2000배인 '꿀' 점도 세팅을 보여줍니다!)
-- **Taylor-Hood 요소 ($P^2-P^1$)**: 나비에-스토크스 방정식의 수치적 안정성(LBB 조건)을 만족시키기 위해, 속도장($V$)은 2차 기저 함수(`v_cg2`), 압력장($Q$)은 1차 기저 함수(`s_cg1`)를 사용합니다.
-
-### 🔹 경계 조건 (Boundary Conditions)
-문제에서 정의된 기하학적 형상에 맞추어 경계 조건을 부여합니다.
-- **Inlet**: 시간에 따라 맥동하는 포물선 유속 분포 $u(x,y,t)$를 파이썬 클래스(`InletVelocity`)로 구현하여 주입합니다.
-- **Walls & Obstacle**: 유체가 벽에 붙어서 움직이지 않는 **점착 조건(No-slip, $\mathbf{u}=0$)**을 부여합니다.
-- **Outlet**: 대기압 상태를 모사하기 위해 출구의 압력을 0($p=0$)으로 고정합니다.
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-# ============================================
-# Physical Parameters
-# ============================================
-t = 0.0
-T = 8.0  # Final time
-dt = 0.001  # Time step size
-num_steps = int(T / dt)
-k = Constant(mesh, PETSc.ScalarType(dt))
-mu = Constant(mesh, PETSc.ScalarType(0.001))  # Dynamic viscosity
-rho = Constant(mesh, PETSc.ScalarType(1))  # Density
-
-# ✅ 저장 간격 설정 (중요!)
-save_interval = 50  # 100 스텝마다 저장 → 총 128개 파일
-
-if mesh_comm.rank == 0:
-    print(f"✅ Simulation parameters:")
-    print(f"   T = {T}, dt = {dt}, num_steps = {num_steps}")
-    print(f"   mu = {0.001}, rho = {1}")
-    print(f"   Save interval: every {save_interval} steps ({num_steps//save_interval} files)")
-
-# ============================================
-# Function Spaces
-# ============================================
-v_cg2 = element("Lagrange", mesh.basix_cell(), 2, shape=(mesh.geometry.dim,))
-s_cg1 = element("Lagrange", mesh.basix_cell(), 1)
-V = functionspace(mesh, v_cg2)
-Q = functionspace(mesh, s_cg1)
-
-fdim = mesh.topology.dim - 1
-
-# ============================================
-# Boundary Conditions
-# ============================================
-class InletVelocity:
-    def __init__(self, t):
-        self.t = t
-
-    def __call__(self, x):
-        values = np.zeros((gdim, x.shape[1]), dtype=PETSc.ScalarType)
-        values[0] = (
-            4 * 1.5 * np.sin(self.t * np.pi / 8) * x[1] * (0.41 - x[1]) / (0.41**2)
-        )
-        return values
+  __all__ = ["generate_disk"] 
+  #generate_disk 외에 외부에서 접근 제한
 
 
-# Inlet
-u_inlet = Function(V)
-inlet_velocity = InletVelocity(t)
-u_inlet.interpolate(inlet_velocity)
-bcu_inflow = dirichletbc(
-    u_inlet, locate_dofs_topological(V, fdim, ft.find(inlet_marker))
-)
-# Walls
-u_nonslip = np.array((0,) * mesh.geometry.dim, dtype=PETSc.ScalarType)
-bcu_walls = dirichletbc(
-    u_nonslip, locate_dofs_topological(V, fdim, ft.find(wall_marker)), V
-)
-# Obstacle
-bcu_obstacle = dirichletbc(
-    u_nonslip, locate_dofs_topological(V, fdim, ft.find(obstacle_marker)), V
-)
-bcu = [bcu_inflow, bcu_obstacle, bcu_walls]
-# Outlet
-bcp_outlet = dirichletbc(
-    PETSc.ScalarType(0), locate_dofs_topological(Q, fdim, ft.find(outlet_marker)), Q
-)
-bcp = [bcp_outlet]
+  def generate_disk(filename: Path, res: float, order: int = 1, refinement_level: int = 1):
+      """Generate a disk around the origin with radius 1 and resolution `res`.
 
-if mesh_comm.rank == 0:
-    print(f"✅ Boundary conditions applied")
-```
-</div>
----
-layout: two-cols
-layoutClass: gap-8
----
+      Args:
+          filename: Name of the file to save the mesh to.
+          res: Resolution of the mesh.
+          order: Order of the mesh elements.
+          refinement_level: Number of gmsh refinements
+      """
+      gmsh.initialize()
+      if MPI.COMM_WORLD.rank == 0:
+          membrane = gmsh.model.occ.addDisk(0, 0, 0, 1, 1)
+          gmsh.model.occ.synchronize()
+          gdim = 2 #2D 문제
+          gmsh.model.addPhysicalGroup(gdim, [membrane], 1)
+          gmsh.option.setNumber("Mesh.CharacteristicLengthMin", res) 
+          gmsh.option.setNumber("Mesh.CharacteristicLengthMax", res) #균일한 크기의 mesh 생성
+          gmsh.model.mesh.generate(gdim)
+          gmsh.model.mesh.setOrder(order)
+          for _ in range(refinement_level):
+              #refine level만큼 mesh 세분화(삼각형 1개 -> 4개)
+              gmsh.model.mesh.refine()
+              gmsh.model.mesh.setOrder(order)
 
-# 3. 문제 설정 (Variational Forms)
-<div class="text-xl opacity-80 mb-6">나비에-스토크스 수식의 UFL 코드화</div>
+      gmsh_model_rank = 0
+      mesh_comm = MPI.COMM_WORLD
+      model = dolfinx.io.gmsh.model_to_mesh(gmsh.model, mesh_comm, gmsh_model_rank, gdim=gdim)
+      msh = model[0]
+      gmsh.finalize()
+      out_name = filename.with_stem(f"{filename.stem}_{refinement_level}").with_suffix(".xdmf")
+      filename.parent.mkdir(exist_ok=True, parents=True)
+      with dolfinx.io.XDMFFile(mesh_comm, out_name, "w") as xdmf:
+          xdmf.write_mesh(msh)
 
-::left::
 
-<div class="text-[13px] mt-4">
+  if __name__ == "__main__":
+      for i in range(4):
+          generate_disk(Path("meshes/disk.xdmf"), res=0.1, order=2, refinement_level=i)
+  ```
 
-수학적으로 유도했던 분할 스텝 방법(IPCS)의 3단계 약형(Weak forms)을 `ufl` 문법을 이용해 코드로 번역합니다.
-
-* **Step 1 (가짜 속도 `u_s`)**: 
-  - 비선형 대류항 처리를 위해 과거 스텝(`u_n1`)과 현재 스텝(`u_n`)을 조합(Adams-Bashforth)하여 선형화했습니다.
-  - 시간 간격은 `k`(=$\Delta t$) 상수로 정의됩니다.
-* **Step 2 (압력 보정 `phi`)**: 
-  - 연속 방정식 $\nabla \cdot u = 0$을 만족하기 위한 압력 푸아송(Poisson) 방정식입니다. 행렬 `A2`는 시간에 독립적이므로 루프 밖에서 한 번만 조립(`assemble`)하여 연산 효율을 높였습니다.
-* **Step 3 (속도 투영 `u_`)**: 
-  - 새롭게 구해진 압력 구배(`nabla_grad(phi)`)를 가짜 속도에 반영하여 질량이 보존되는 진짜 속도를 도출합니다.
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-# ============================================
-# Variational Forms (IPCS)
-# ============================================
-u = TrialFunction(V)
-v = TestFunction(V)
-u_ = Function(V, name="u")
-u_s = Function(V, name="u_tentative")
-u_n = Function(V)
-u_n1 = Function(V)
-p = TrialFunction(Q)
-q = TestFunction(Q)
-p_ = Function(Q, name="p")
-phi = Function(Q, name="phi")
-
-# ✅ 초기 조건 설정 (중요!)
-u_.x.array[:] = 0.0
-u_n.x.array[:] = 0.0
-u_n1.x.array[:] = 0.0
-p_.x.array[:] = 0.0
-
-f = Constant(mesh, PETSc.ScalarType((0, 0)))
-F1 = rho / k * dot(u - u_n, v) * dx
-F1 += inner(dot(1.5 * u_n - 0.5 * u_n1, 0.5 * nabla_grad(u + u_n)), v) * dx
-F1 += 0.5 * mu * inner(grad(u + u_n), grad(v)) * dx - dot(p_, div(v)) * dx
-F1 += dot(f, v) * dx
-a1 = form(lhs(F1))
-L1 = form(rhs(F1))
-A1 = create_matrix(a1)
-b1 = create_vector(extract_function_spaces(L1))
-
-a2 = form(dot(grad(p), grad(q)) * dx)
-L2 = form(-rho / k * dot(div(u_s), q) * dx)
-A2 = assemble_matrix(a2, bcs=bcp)
-A2.assemble()
-b2 = create_vector(extract_function_spaces(L2))
-
-a3 = form(rho * dot(u, v) * dx)
-L3 = form(rho * dot(u_s, v) * dx - k * dot(nabla_grad(phi), v) * dx)
-A3 = assemble_matrix(a3)
-A3.assemble()
-b3 = create_vector(extract_function_spaces(L3))
-```
 </div>
 
 ---
@@ -699,647 +580,490 @@ layout: two-cols
 layoutClass: gap-8
 ---
 
-# 4. 솔버 구성: 코드 분석
-<div class="text-[13px] opacity-80 mb-6">수학적 특성에 맞춘 최적의 반복법(Iterative) 솔버</div>
+<script setup>
+import { ref } from 'vue'
+const isExpanded = ref(false)
+</script>
+
+# 7-3. github 코드 실행 
+compare_all.py
 
 ::left::
 
-<div class="text-[13px] mt-4">
+<div class="text-sm mt-4">
 
-### 🔹 Step 1: `BCGS` + `Jacobi`
-- **대상**: 대류항($u \cdot \nabla u$)이 포함된 **비대칭(Non-symmetric) 행렬**.
-- **이유**: 대류가 지배적인 유동에서는 행렬의 대칭성이 깨집니다. 이 경우 수렴성이 좋은 BiCGStab(`BCGS`) 솔버와 가벼운 `Jacobi` preconditioner가 효율적입니다.
-
-### 🔹 Step 2: `MINRES` + `BoomerAMG`
-- **대상**: 압력 푸아송(Poisson) 방정식 (**대칭 행렬**).
-- **이유**: 타원형(Elliptic) 편미분 방정식인 푸아송 식을 푸는 데는 다중 격자 기법인 Algebraic Multigrid (`boomeramg`)가 압도적인 스케일링 성능을 보여줍니다. 
-
-### 🔹 Step 3: `CG` + `SOR`
-- **대상**: 속도 업데이트를 위한 **대칭 정정부호(SPD) 질량 행렬**.
-- **이유**: 대칭 행렬 풀이에 적합한 Conjugate Gradient(`CG`) 솔버에 `SOR` preconditioner를 결합하여 가볍고 빠르게 연산합니다.
-
+#### 🔹 솔버 호출 (PG, IPOPT, GALAHAD, SNES)
+* 각 코드의 솔버 함수를 import를 이용해 호출합니다.<br><br>
+#### 🔹 출력 구성
+* `Proximal Galerkin`: 1, 2차 라그랑주로 긱긱 출력
+* `Galahad`: 단독 출력
+* `IPOPT`: Hessian의 유무에 따른 두 경우 모두 출력
+* `SNES`: 단독 출력
+<div class="w-full flex flex-col items-center justify-center mt-6">
+  <img src="./images/image_1.png" alt="Obstacle Cross Section" class="w-full max-h-[180px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-2">장애물 $\phi(x,y)$의 2D 단면 및 막의 접촉 형태</div>
+</div>
 </div>
 
 ::right::
 
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
+<button @click="isExpanded = true" class="mt-8 px-4 py-2 bg-gray-800 text-white text-sm rounded shadow-md hover:bg-gray-700 transition-all flex items-center gap-2">
+  <carbon:zoom-in /> 코드 전체화면으로 보기
+</button>
 
-```python {all} twoslash
-# ============================================
-# Solvers
-# ============================================
+<div :class="isExpanded ? 'fixed inset-4 z-50 bg-white shadow-2xl rounded-xl p-8 overflow-y-auto border border-gray-300' : 'overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8'">
 
-# Step 1: 비대칭 행렬 (대류항 포함)
-solver1 = PETSc.KSP().create(mesh.comm)
-solver1.setOperators(A1)
-solver1.setType(PETSc.KSP.Type.BCGS)
-pc1 = solver1.getPC()
-pc1.setType(PETSc.PC.Type.JACOBI)
+  <div v-show="isExpanded" class="flex justify-between items-center mb-4 border-b pb-4">
+    <div class="text-xl font-bold text-gray-800">generate_mesh_gmsh.py (전체 코드)</div>
+    <button @click="isExpanded = false" class="px-4 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-all text-sm flex items-center gap-1">
+      <carbon:close /> 닫기
+    </button>
+  </div>
 
-# Step 2: 대칭 압력 푸아송 행렬
-solver2 = PETSc.KSP().create(mesh.comm)
-solver2.setOperators(A2)
-solver2.setType(PETSc.KSP.Type.MINRES)
-pc2 = solver2.getPC()
-pc2.setType(PETSc.PC.Type.HYPRE)
-pc2.setHYPREType("boomeramg") # 다중격자 기법
+  ```python {all} twoslash
+  """
+Solve obstacle problem with Proximal Galerkin, Galahad, and IPOPT and compare the results
 
-# Step 3: 대칭 속도 질량 행렬
-solver3 = PETSc.KSP().create(mesh.comm)
-solver3.setOperators(A3)
-solver3.setType(PETSc.KSP.Type.CG)
-pc3 = solver3.getPC()
-pc3.setType(PETSc.PC.Type.SOR)
-```
-</div>
+Author: Jørgen S. Dokken
+SPDX-License-Identifier: MIT
+"""
 
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# 5. 솔버 구성: 대안적 접근
-::left::
-
-<div class="text-[13px] mt-4">
-
-현재 코드는 2D 환경에서 최적화되어 있으나, 해석하려는 모델의 크기나 조건(예: 3D 유동, 복잡한 난류)에 따라 솔버 전략을 수정해야 할 수 있습니다.
-
-### 🔹 직접법 솔버 (Direct Solver: `MUMPS`, `SuperLU`)
-- **특징**: 행렬을 직접 역행렬 연산(LU 분해)하여 **정확한 해**를 구합니다.
-- **언제 쓰나요?**: 수렴이 매우 어려운 악조건(Ill-conditioned) 행렬이거나, 모델 크기가 비교적 작은 2D 문제에 적합합니다. 3D로 넘어가면 메모리 사용량이 기하급수적으로 폭발하여 사용이 어렵습니다.
-
-### 🔹 대안적 반복법 (Iterative: `GMRES` + `ILU`)
-- **특징**: `BCGS`가 수렴하지 않고 진동할 때 대체재로 사용합니다.
-- **언제 쓰나요?**: 극도로 비대칭성이 강한 난류 모델 등에서 사용합니다. 단, 반복 횟수가 늘어날수록 메모리를 많이 차지하므로 적절한 재시작(Restart) 설정이 필수적입니다.
-
-
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-# 💡 직접법 솔버 적용 예시 (LU 분해 - MUMPS)
-solver_direct = PETSc.KSP().create(mesh.comm)
-solver_direct.setOperators(A1)
-# KSP 타입을 PREONLY로 설정하고
-solver_direct.setType(PETSc.KSP.Type.PREONLY)
-pc_direct = solver_direct.getPC()
-# PC 타입을 LU 분해로 설정
-pc_direct.setType(PETSc.PC.Type.LU)
-pc_direct.setFactorSolverType("mumps")
-
-
-# 💡 비대칭 대안 반복법 (GMRES + ILU)
-solver_gmres = PETSc.KSP().create(mesh.comm)
-solver_gmres.setOperators(A1)
-solver_gmres.setType(PETSc.KSP.Type.GMRES)
-# GMRES 메모리 한계 설정을 위한 재시작 값
-solver_gmres.setGMRESRestart(30) 
-pc_gmres = solver_gmres.getPC()
-pc_gmres.setType(PETSc.PC.Type.ILU) # 불완전 LU
-```
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# 6. 물리량 계산: 항력과 양력
-<div class="text-xl opacity-80 mb-6">원통이 유체로부터 받는 힘(Drag & Lift) 수식 정의</div>
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-속도와 압력을 구했다면, 이제 이를 바탕으로 원통에 작용하는 항력(Drag)과 양력(Lift) 계수를 계산해야 합니다.
-
-### 🔹 항력 및 양력 수식
-물체가 받는 힘은 유체의 압력(형태 저항)과 점성(표면 마찰)에 의해 발생합니다.
-* **접선 속도 ($u_t$)**: 법선 벡터 $n = (n_x, n_y)$에 수직인 방향의 속도입니다.
-  $u_{t_s} = u \cdot (n_y, -n_x)$
-* **항력 계수 ($C_D$)**: $x$축 방향으로 밀리는 힘.
-* **양력 계수 ($C_L$)**: $y$축 방향으로 흔들리는 힘.
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-# ============================================
-# Force Coefficients
-# ============================================
-# 1. 원통 표면의 법선 벡터 (바깥을 향함)
-n = -FacetNormal(mesh)  
-# 2. 원통 표면에 대한 적분 측도(Measure) 생성
-dObs = Measure("ds", domain=mesh, 
-               subdomain_data=ft, 
-               subdomain_id=obstacle_marker)
-
-# 3. 접선 방향 속도 (Tangential velocity)
-u_t = inner(as_vector((n[1], -n[0])), u_)
-
-# 4. 항력(Drag)과 양력(Lift) 수식 정의 (적분 폼)
-# 무차원화 계수: 2 / 0.1 (0.1은 원통의 직경)
-drag = form(2 / 0.1 * (mu / rho * inner(grad(u_t), n) * n[1] \
-            - p_ * n[0]) * dObs)
-lift = form(-2 / 0.1 * (mu / rho * inner(grad(u_t), n) * n[0] \
-            + p_ * n[1]) * dObs)
-
-if mesh.comm.rank == 0:
-    # 시간에 따른 데이터 저장을 위한 배열 할당
-    C_D = np.zeros(num_steps, dtype=PETSc.ScalarType)
-    C_L = np.zeros(num_steps, dtype=PETSc.ScalarType)
-    t_u = np.zeros(num_steps, dtype=np.float64)
-    t_p = np.zeros(num_steps, dtype=np.float64)
-```
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# 7. 데이터 추출 및 I/O 설정
-<div class="text-xl opacity-80 mb-6">특정 지점 탐색(Bounding Box Tree) 및 결과 저장</div>
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-시뮬레이션 루프가 시작되기 전, 특정 위치의 값을 추출할 준비와 시각화 파일 저장 설정을 진행합니다.
-
-### 🔹 압력차(Δp) 포인트 탐색
-원통 앞점(0.15, 0.2)과 뒷점(0.25, 0.2)의 압력차를 구해야 합니다. FEniCSx는 도메인이 코어별로 분할되어 있으므로, `bb_tree`(Bounding Box Tree)를 사용해 해당 좌표가 어느 코어의 어느 셀(Cell)에 속해 있는지 충돌을 감지(Collision detection)하여 빠르게 찾아냅니다.
-
-### 🔹 파일 저장 (VTX & XDMF)
-* **VTXWriter (BP4)**: 고성능 병렬 I/O(ADIOS2)를 지원하는 최신 포맷으로 대용량 데이터 저장에 적합합니다.
-* **XDMFFile**: ParaView와 같은 시각화 툴에서 널리 쓰이는 표준 포맷입니다.
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-# ============================================
-# Pressure Difference Points
-# ============================================
-tree = bb_tree(mesh, mesh.geometry.dim)
-points = np.array([[0.15, 0.2, 0], [0.25, 0.2, 0]])
-cell_candidates = compute_collisions_points(tree, points)
-colliding_cells = compute_colliding_cells(mesh, cell_candidates, points)
-front_cells = colliding_cells.links(0)
-back_cells = colliding_cells.links(1)
-if mesh.comm.rank == 0:
-    p_diff = np.zeros(num_steps, dtype=PETSc.ScalarType)
-
-# ============================================
-# Output Files
-# ============================================
+import argparse
 from pathlib import Path
 
-folder = Path("results")
-folder.mkdir(exist_ok=True, parents=True)
+import dolfinx
+import numpy as np
+from obstacle_ipopt_galahad import ObstacleProblem, setup_problem
+from obstacle_pg import solve_problem
+from obstacle_snes import snes_solve
 
-# ✅ VTX와 XDMF 둘 다 저장 (호환성)
-vtx_u = VTXWriter(mesh.comm, folder / "dfg2D-3-u.bp", [u_], engine="BP4")
-vtx_p = VTXWriter(mesh.comm, folder / "dfg2D-3-p.bp", [p_], engine="BP4")
+from lvpp.optimization import galahad_solver, ipopt_solver
 
-# XDMF는 속도만 저장 (압력은 1차라서 2차 메시와 안맞음)
-xdmf_u = XDMFFile(mesh.comm, folder / "dfg2D-3-u.xdmf", "w")
-xdmf_u.write_mesh(mesh)
-
-# 압력용 2차 함수 공간 생성 (XDMF 저장용)
-s_cg2 = element("Lagrange", mesh.basix_cell(), 2)
-Q2 = functionspace(mesh, s_cg2)
-p_viz = Function(Q2, name="p")
-xdmf_p = XDMFFile(mesh.comm, folder / "dfg2D-3-p.xdmf", "w")
-xdmf_p.write_mesh(mesh)
-
-# ✅ 초기 상태 저장
-vtx_u.write(t)
-vtx_p.write(t)
-xdmf_u.write_function(u_, t)
-# 압력을 2차로 보간하여 저장
-p_viz.interpolate(p_)
-xdmf_p.write_function(p_viz, t)
-
-if mesh_comm.rank == 0:
-    print(f"\n✅ Starting time loop...")
-```
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# 8. Time Loop (1/2): IPCS 풀이
-<div class="text-xl opacity-80 mb-6">시간 이산화에 따른 매 스텝별 행렬 조립 및 해 도출</div>
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-#### 🔹 1. 시간에 따른 경계조건 갱신
-- $U(t) = 1.5 \sin(\pi t / 8)$ 수식에 따라 입구 유속이 변합니다.
-- `inlet_velocity.t = t` 로 시간을 업데이트한 뒤, `interpolate`를 호출해 새로운 경계값을 메시 전체에 맵핑합니다.
-
-#### 🔹 2. 저수준 행렬 조립 (Low-level Assembly)
-- `assemble_vector`: 우변 벡터 $b$ 조립
-- `scatter_forward`: 병렬 통신 환경에서 고스트 노드(Ghost nodes, 코어 간 경계 데이터)를 동기화합니다.
-
-#### 🔹 3. Step 1~3 순차적 해결
-미리 구성해둔 반복법 솔버(`solver1`, `solver2`, `solver3`)를 이용해 가짜 속도 $\rightarrow$ 압력 증분 $\rightarrow$ 최종 속도를 순서대로 구해냅니다.
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-# ============================================
-# Time Loop
-# ============================================
-for i in range(num_steps):
-    # Update current time step
-    t += dt
-    # Update inlet velocity
-    inlet_velocity.t = t
-    u_inlet.interpolate(inlet_velocity)
-
-    # Step 1: Tentative velocity step
-    A1.zeroEntries()
-    assemble_matrix(A1, a1, bcs=bcu)
-    A1.assemble()
-    with b1.localForm() as loc:
-        loc.set(0)
-    assemble_vector(b1, L1)
-    apply_lifting(b1, [a1], [bcu])
-    b1.ghostUpdate(addv=PETSc.InsertMode.ADD_VALUES, mode=PETSc.ScatterMode.REVERSE)
-    set_bc(b1, bcu)
-    solver1.solve(b1, u_s.x.petsc_vec)
-    u_s.x.scatter_forward()
-
-    # Step 2: Pressure correction step
-    with b2.localForm() as loc:
-        loc.set(0)
-    assemble_vector(b2, L2)
-    apply_lifting(b2, [a2], [bcp])
-    b2.ghostUpdate(addv=PETSc.InsertMode.ADD_VALUES, mode=PETSc.ScatterMode.REVERSE)
-    set_bc(b2, bcp)
-    solver2.solve(b2, phi.x.petsc_vec)
-    phi.x.scatter_forward()
-
-    p_.x.petsc_vec.axpy(1, phi.x.petsc_vec)
-    p_.x.scatter_forward()
-
-    # Step 3: Velocity correction step
-    with b3.localForm() as loc:
-        loc.set(0)
-    assemble_vector(b3, L3)
-    b3.ghostUpdate(addv=PETSc.InsertMode.ADD_VALUES, mode=PETSc.ScatterMode.REVERSE)
-    solver3.solve(b3, u_.x.petsc_vec)
-    u_.x.scatter_forward()
-```
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# 9. Time Loop (2/2): 물리량 추출
-<div class="text-xl opacity-80 mb-6">항력/양력 적분, MPI 병렬 통신 및 다음 스텝 준비</div>
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-#### 🔹 결과 파일 저장 및 상태 갱신
-- 지정된 간격(`save_interval`)마다 시각화용 파일(VTX, XDMF)을 저장하여 디스크 용량을 절약합니다.
-
-#### 🔹 물리량 병렬 취합 (MPI Gather)
-- **적분값 합산**: `assemble_scalar`로 각 코어가 담당하는 원통 표면의 $C_D$, $C_L$을 적분한 뒤, 마스터 노드(`root=0`)가 `comm.gather`로 수집하여 최종 합산을 수행합니다.
-- **포인트 압력 탐색**: 원통 앞뒤의 포인트 압력은 특정 코어에만 존재합니다. 따라서 모든 코어가 `gather`를 수행하되, 마스터 노드에서 값이 존재하는(`is not None`) 코어의 데이터만 골라내어 압력차($\Delta p$)를 계산하는 로직을 취합니다.
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-    # ✅ 저장 (save_interval마다만)
-    if i % save_interval == 0:
-        vtx_u.write(t)
-        vtx_p.write(t)
-        xdmf_u.write_function(u_, t)
-        # 압력을 2차로 보간하여 저장
-        p_viz.interpolate(p_)
-        xdmf_p.write_function(p_viz, t)
-
-    # Update variable with solution from this time step
-    with (
-        u_.x.petsc_vec.localForm() as loc_,
-        u_n.x.petsc_vec.localForm() as loc_n,
-        u_n1.x.petsc_vec.localForm() as loc_n1,
-    ):
-        loc_n.copy(loc_n1)
-        loc_.copy(loc_n)
-
-    # Compute physical quantities
-    drag_coeff = mesh.comm.gather(assemble_scalar(drag), root=0)
-    lift_coeff = mesh.comm.gather(assemble_scalar(lift), root=0)
-    p_front = None
-    if len(front_cells) > 0:
-        p_front = p_.eval(points[0], front_cells[:1])
-    p_front = mesh.comm.gather(p_front, root=0)
-    p_back = None
-    if len(back_cells) > 0:
-        p_back = p_.eval(points[1], back_cells[:1])
-    p_back = mesh.comm.gather(p_back, root=0)
-
-    if mesh.comm.rank == 0:
-        t_u[i] = t
-        t_p[i] = t - dt / 2
-        C_D[i] = sum(drag_coeff)
-        C_L[i] = sum(lift_coeff)
-        # Choose first pressure that is found from the different processors
-        for pressure in p_front:
-            if pressure is not None:
-                p_diff[i] = pressure[0]
-                break
-        for pressure in p_back:
-            if pressure is not None:
-                p_diff[i] -= pressure[0]
-                break
-
-        # Progress output (every 500 steps)
-        if (i + 1) % 500 == 0 or i == num_steps - 1:
-            print(f"   Step {i+1:5d}/{num_steps}, t={t:.3f}, C_D={C_D[i]:.4f}, C_L={C_L[i]:.4f}")
-
-vtx_u.close()
-vtx_p.close()
-xdmf_u.close()
-xdmf_p.close()
-
-if mesh_comm.rank == 0:
-    print(f"\n✅ Simulation complete")
-
-# ============================================
-# Cleanup
-# ============================================
-A1.destroy()
-A2.destroy()
-A3.destroy()
-b1.destroy()
-b2.destroy()
-b3.destroy()
-solver1.destroy()
-solver2.destroy()
-solver3.destroy()
-```
-</div>
-
----
-layout: center
----
-
-# 10. 시각화 결과 (Velocity & Pressure Fields)
-<div class="text-xl opacity-80 mb-6">ParaView를 활용한 von Kármán Vortex Street 애니메이션</div>
-
-<div class="text-sm mt-4 mb-6">
-  시뮬레이션을 통해 도출된 속도장과 압력장입니다. 원통(Obstacle)을 지난 유체가 속도 변화에 따라 소용돌이를 방출하는 전형적인 비정상 상태(Unsteady) 난류 패턴을 보여줍니다.
-</div>
-
-<div grid="~ cols-2 gap-8" class="mt-4">
-  <div class="text-center">
-    <h3 class="mb-4">Velocity Field (u)</h3>
-    <video controls autoplay loop muted class="w-full rounded shadow-lg border border-gray-200/20">
-      <source src="./images/u_navies.mp4" type="video/mp4">
-      브라우저가 비디오 태그를 지원하지 않습니다.
-    </video>
-  </div>
-
-  <div class="text-center">
-    <h3 class="mb-4">Pressure Field (p)</h3>
-    <video controls autoplay loop muted class="w-full rounded shadow-lg border border-gray-200/20">
-      <source src="./images/p_navies.mp4" type="video/mp4">
-      브라우저가 비디오 태그를 지원하지 않습니다.
-    </video>
-  </div>
-</div>
-
----
-layout: two-cols
-layoutClass: gap-8
----
-
-# 11. Post-processing 및 검증
-<div class="text-xl opacity-80 mb-6">물리량(Drag, Lift, Δp) 시각화 및 Turek 벤치마크 비교</div>
-
-::left::
-
-<div class="text-[13px] mt-4">
-
-저장해둔 $C_D$, $C_L$, $\Delta p$ 배열을 Matplotlib을 이용해 그래프로 출력합니다.
-
-### 🔹 Turek 벤치마크 (FEATFLOW) 비교
-동일한 DFG 2D-3 벤치마크를 수행한 신뢰도 높은 외부 데이터(`bdforces_lv4` 등)가 폴더에 있는지 확인(`os.path.exists`)합니다.
-- **데이터가 있다면**: 우리가 FEniCSx로 구한 선 그래프 위에 벤치마크 데이터를 'x' 마커로 겹쳐 그려 시뮬레이션의 정확도를 완벽하게 입증합니다.
-- **데이터가 없다면**: 오류를 뿜는 대신 부드럽게 넘어가며(Fallback) FEniCSx 결과만 단독으로 그려줍니다.
-
-</div>
-
-::right::
-
-<div class="overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8">
-
-```python {all} twoslash
-# ============================================
-# Post-processing (Rank 0 only)
-# ============================================
-if mesh.comm.rank == 0:
-    num_velocity_dofs = V.dofmap.index_map_bs * V.dofmap.index_map.size_global
-    num_pressure_dofs = Q.dofmap.index_map_bs * Q.dofmap.index_map.size_global  # ✅ V→Q 버그 수정
-
-    print(f"\n📊 Results:")
-    print(f"   Total DOFs: {num_velocity_dofs + num_pressure_dofs}")
-    print(f"   Velocity DOFs: {num_velocity_dofs}")
-    print(f"   Pressure DOFs: {num_pressure_dofs}")
-    print(f"   Max C_D: {np.max(C_D):.6f}")
-    print(f"   Max C_L: {np.max(C_L):.6f}")
-    print(f"   Max p_diff: {np.max(p_diff):.6f}")
-
-    # Create figures directory
-    if not os.path.exists("figures"):
-        os.mkdir("figures")
-
-    # ✅ Turek 벤치마크 데이터 로드 (파일 없을 경우 FEniCSx 단독 플롯으로 fallback)
-    turek_available = os.path.exists("bdforces_lv4") and os.path.exists("pointvalues_lv4")
-    if turek_available:
-        turek   = np.loadtxt("bdforces_lv4")
-        turek_p = np.loadtxt("pointvalues_lv4")
-        print("✅ Turek benchmark data loaded — comparison plots will be generated")
-    else:
-        print("⚠️  'bdforces_lv4' / 'pointvalues_lv4' not found — plotting FEniCSx results only")
-
-    # ── Drag coefficient ──────────────────────────────────────────────
-    fig = plt.figure(figsize=(25, 8))
-    plt.plot(
-        t_u, C_D,
-        label=r"FEniCSx ({0:d} dofs)".format(num_velocity_dofs + num_pressure_dofs),
-        linewidth=2,
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Solve the obstacle problem on a unit square using Galahad.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    if turek_available:
-        plt.plot(
-            turek[1:, 1], turek[1:, 3],
-            marker="x", markevery=50, linestyle="", markersize=4,
-            label="FEATFLOW (42016 dofs)",
-        )
-    plt.title("Drag coefficient")
-    plt.xlabel("Time [s]")
-    plt.ylabel("C_D")
-    plt.grid()
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("figures/drag_comparison.png", dpi=150)
-    print("   📈 Saved: figures/drag_comparison.png")
-    plt.close()
-
-    # ── Lift coefficient ──────────────────────────────────────────────
-    fig = plt.figure(figsize=(25, 8))
-    plt.plot(
-        t_u, C_L,
-        label=r"FEniCSx ({0:d} dofs)".format(num_velocity_dofs + num_pressure_dofs),
-        linewidth=2,
+    parser.add_argument(
+        "--path",
+        "-P",
+        dest="infile",
+        type=Path,
+        default="./meshes/disk_3.xdmf",
+        help="Path to infile",
     )
-    if turek_available:
-        plt.plot(
-            turek[1:, 1], turek[1:, 4],
-            marker="x", markevery=50, linestyle="", markersize=4,
-            label="FEATFLOW (42016 dofs)",
-        )
-    plt.title("Lift coefficient")
-    plt.xlabel("Time [s]")
-    plt.ylabel("C_L")
-    plt.grid()
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("figures/lift_comparison.png", dpi=150)
-    print("   📈 Saved: figures/lift_comparison.png")
-    plt.close()
-
-    # ── Pressure difference ───────────────────────────────────────────
-    fig = plt.figure(figsize=(25, 8))
-    plt.plot(
-        t_p, p_diff,
-        label=r"FEniCSx ({0:d} dofs)".format(num_velocity_dofs + num_pressure_dofs),
-        linewidth=2,
+    parser.add_argument(
+        "--results",
+        "-O",
+        dest="result_dir",
+        type=Path,
+        default=Path("results"),
+        help="Path to results ",
     )
-    if turek_available:
-        plt.plot(
-            turek[1:, 1], turek_p[1:, 6] - turek_p[1:, -1],
-            marker="x", markevery=50, linestyle="", markersize=4,
-            label="FEATFLOW (42016 dofs)",
-        )
-    plt.title("Pressure difference")
-    plt.xlabel("Time [s]")
-    plt.ylabel("Δp [Pa]")
-    plt.grid()
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("figures/pressure_comparison.png", dpi=150)
-    print("   📈 Saved: figures/pressure_comparison.png")
-    plt.close()
+    max_iter = 500 # 최대 반복 횟수
+    tol = 1e-4 # 수렴 허용 오차
+    args = parser.parse_args()
 
-    print(f"\n✅ All plots saved to 'figures/' directory")
-    print(f"✅ Simulation data saved to 'results/' directory")
-    print(f"\n💡 Tip: Use ParaView to open:")
-    print(f"   - results/dfg2D-3-u.xdmf (velocity)")
-    print(f"   - results/dfg2D-3-p.xdmf (pressure)")
+    args.result_dir.mkdir(parents=True, exist_ok=True)
+
+    # Set up problem matrices. initial guess and bounds
+    problem = setup_problem(args.infile)
+    S_, M_, f_, bounds_ = setup_problem(args.infile)
+    # S_: 강성 행렬 (Stiffness matrix) — ∫∇u·∇v dx 에 해당
+    # M_: 질량 행렬 (Mass matrix) — ∫u·v dx 에 해당
+    # f_: 우변 하중 벡터 (FEM Function 형태)
+    # bounds_: 장애물 조건 — [하한(lower), 상한(upper)] 형태의 Function 리스트
+
+    bounds = tuple(b.x.array for b in bounds_)
+
+    problem = ObstacleProblem(S_.copy(), M_.copy(), f_.x.array)
+    # .copy()를 사용해 원본 행렬이 수정되지 않도록 보호
+    V = f_.function_space
+    mesh = V.mesh
+    degree = mesh.geometry.cmap.degree
+    V_out = dolfinx.fem.functionspace(mesh, ("Lagrange", degree))
+
+    # Solve with Galahad
+    x_g = dolfinx.fem.Function(V, name="galahad")
+    x_g.x.array[:] = 0.0
+
+    x_galahad, num_galahad_iterations = galahad_solver(
+        problem,
+        x_g.x.array.copy(),
+        bounds,
+        max_iter=max_iter,
+        use_hessian=True,
+        tol=tol,
+    )
+    x_g.x.array[:] = x_galahad
+    x_g_out = dolfinx.fem.Function(V_out, name="ipopt")
+    x_g_out.interpolate(x_g)
+    with dolfinx.io.VTXWriter(
+        V.mesh.comm, args.result_dir / f"{args.infile.stem}_galahad.bp", [x_g_out]
+    ) as bp:
+        bp.write(0.0)
+
+    # Solve with llvp (first order)
+
+    u_lvpp, max_it = solve_problem(
+        args.infile,
+        1, # 1차 라그랑주 사용
+        maximum_number_of_outer_loop_iterations=max_iter,
+        alpha_scheme="double_exponential",
+        alpha_max=1e2, # alpha가 발산하지 않도록 최댓값 지정
+        tol_exit=tol,
+    )
+
+    mesh = u_lvpp.function_space.mesh
+    degree = mesh.geometry.cmap.degree
+    V_out = dolfinx.fem.functionspace(mesh, ("Lagrange", degree))
+    u_out = dolfinx.fem.Function(V_out, name="llvp")
+    u_out.interpolate(u_lvpp.sub(0))
+    with dolfinx.io.VTXWriter(
+        mesh.comm, args.result_dir / f"{args.infile.stem}_llvp_first_order.bp", [u_out]
+    ) as bp:
+        bp.write(0.0)
+
+    # Solve with llvp (second order)
+
+    u_lvpp_2, max_it_2 = solve_problem(
+        args.infile,
+        2, # 2차 라그랑주 사용
+        maximum_number_of_outer_loop_iterations=max_iter,
+        alpha_scheme="double_exponential",
+        alpha_max=1e2, # alpha가 발산하지 않도록 최댓값 지정
+        tol_exit=tol,
+    )
+    u_out = u_lvpp_2.sub(0).collapse()
+    with dolfinx.io.VTXWriter(
+        u_out.function_space.mesh.comm,
+        args.result_dir / f"{args.infile.stem}_llvp_second_order.bp",
+        [u_out],
+    ) as bp:
+        bp.write(0.0)
+
+    with dolfinx.io.VTXWriter(
+        mesh.comm, args.result_dir / f"{args.infile.stem}_obstacle.bp", [bounds_[0]]
+    ) as bp:
+        bp.write(0.0)
+
+    # Solve with IPOPT (With hessian)
+    ipopt_iteration_count = {}
+    for with_hessian in [True, False]:
+        x_i = dolfinx.fem.Function(V, name="ipopt")
+        x_i.x.array[:] = 0.0
+        x_ipopt = ipopt_solver(
+            problem,
+            x_i.x.array.copy(),
+            bounds,
+            max_iter=max_iter,
+            tol=1e-2 * tol,
+            activate_hessian=with_hessian,
+        )
+        ipopt_iteration_count[with_hessian] = problem.total_iteration_count
+        x_i.x.array[:] = x_ipopt
+
+        # Output on geometry space
+
+        x_i_out = dolfinx.fem.Function(V_out, name="ipopt")
+        x_i_out.interpolate(x_i)
+        with dolfinx.io.VTXWriter(
+            mesh.comm,
+            args.result_dir / f"{args.infile.stem}_ipopt_hessian_{with_hessian}.bp",
+            [x_i_out],
+        ) as bp:
+            bp.write(0.0)
+
+    # Solve with SNES
+    u_snes, num_snes_iterations = snes_solve(
+        args.infile,
+        snes_options={
+            "snes_type": "vinewtonssls",   # 변분 부등식용 Semi-smooth Newton
+            "snes_monitor": None,
+            "ksp_type": "preonly",          # 선형 솔버: 직접법(전처리만)
+            "pc_type": "lu",               # 전처리기: LU 분해
+            "pc_factor_mat_solver_type": "mumps",  # 병렬 직접 솔버 MUMPS 사용
+        "snes_error_if_not_converged": True,   # 미수렴 시 예외 발생
+            "ksp_error_if_not_converged": True,
+        },
+    )
+    u_snes.name = "snes"
+    with dolfinx.io.VTXWriter(
+        mesh.comm,
+        args.result_dir / f"{args.infile.stem}_snes.bp",
+        [u_snes],
+    ) as bp:
+        bp.write(0.0)
+
+    print(
+        np.min(
+            mesh.h(
+                mesh.topology.dim, np.arange(mesh.topology.index_map(mesh.topology.dim).size_local)
+            )
+        )
+    )
+    print(f"{args.infile} Galahad iterations: {num_galahad_iterations}")
+    print(f"{args.infile} llvp iterations: (P=1) {max_it}")
+    print(f"{args.infile} llvp iterations: (P=2) {max_it_2}")
+    print(f"{args.infile} Ipopt iterations: (With hessian) {ipopt_iteration_count[True]}")
+    print(f"{args.infile} Ipopt iterations: (Without hessian {ipopt_iteration_count[False]}")
+    print(f"{args.infile} SNES iterations: {num_snes_iterations}")
+  ```
+
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# GALAHAD — 내부점법 (Interior Point Method)
+<div class="text-xl opacity-80 mb-6">로그 장벽 함수를 통한 제약 조건 내재화</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click>
+
+### 🔹 핵심 아이디어
+부등식 제약 $u \geq \phi$를 직접 다루는 대신, **로그 장벽 함수(Log Barrier)** 를 목적함수에 흡수시켜 제약 없는 문제로 변환합니다.
+
+$$
+J_\mu(u) = \frac{1}{2}u^TSu - f^TMu - \mu \sum_i \ln(u_i - \phi_i)
+$$
+
+<div class="mt-4 text-sm opacity-80">
+
+- $\mu > 0$이 클수록 장벽이 강하게 작용하여 제약 경계 근처로의 접근을 억제합니다.
+- $\mu \to 0$으로 점차 줄여가면 원래의 제약 문제 해에 수렴합니다.
+
+</div>
+
+### 🔹 수렴 흐름
+
+$$
+\underbrace{u_i \to \phi_i}_{\text{경계 접근}} \Rightarrow \ln(u_i - \phi_i) \to -\infty \Rightarrow J_\mu \to +\infty
+$$
+
+장벽 효과로 해가 **자연스럽게 실현 가능 영역(Feasible Region) 안에** 머뭅니다.
+
+</div>
+<div v-click>
+
+### 🔹 알고리즘 단계
+
+<div class="mt-2 text-sm opacity-80">
+
+1. 초기 장벽 파라미터 $\mu_0 \gg 0$ 설정
+2. 헤시안 $H = S + \mu \cdot \text{diag}((u_i - \phi_i)^{-2})$ 를 이용한 뉴턴 스텝으로 $J_\mu$ 최소화
+3. $\mu_k \to 0$ 으로 감소시키며 반복
+4. 수렴 조건 $\|Su - Mf\| < \text{tol}$ 달성 시 종료
+
+</div><br>
+
+### 🔹 헤시안 사용: 빠르게 최솟값에 도달
+
+$$
+u_{new}​=u_{old}​−H^{-1}∇J
+$$
+
+<div class="mt-2 text-sm opacity-80">
+
+- `use_hessian=True` : 정확한 $H = S$ 사용 → **2차(Quadratic) 수렴**
+- `use_hessian=False` : **L-BFGS** 근사 → 메모리 절약, 수렴 느림
+
+</div>
+
+</div>
+</div>
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# IPOPT — 내부점법 + 필터법
+<div class="text-xl opacity-80 mb-6">KKT 조건의 직접 수치 해법</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click>
+
+### 🔹 KKT 조건으로의 변환
+제약 최적화 문제를 **KKT(Karush-Kuhn-Tucker) 조건** 으로 변환한 뒤, 이를 연립 비선형 방정식으로 풀어냅니다.
+
+$$
+\begin{cases}
+Su - Mf - \lambda = 0 \quad \text{(정류 조건)}\\
+(u - \phi) \cdot \lambda = \mu \quad \text{(상보성 조건)}\\
+u - \phi \geq 0, \quad \lambda \geq 0
+\end{cases}
+$$
+
+<div class="mt-2 text-sm opacity-80">
+
+- $\lambda$: 제약에 대응하는 라그랑주 승수(반력)<br>
+-> 막과 장애물이 떨어져 있다면 $\lambda=0$, 붙어 있다면 $\lambda \ge 0$
+- $\mu \to 0$ 극한에서 정확한 상보성 조건 $(u-\phi)\lambda = 0$ 으로 수렴<br>
+-> 막이 장애물과 닿아 있거나($u-\phi$ = 0) 떨어져 있거나($\lambda = 0$)
+- 처음부터 막과 장애물이 닿아있는 부분을 모르므로 $\mu$를 양수로 한 후 천천히 줄여나감
+</div>
+
+</div>
+<div v-click>
+
+### 🔹 필터법 (Filter Method)
+GALAHAD와의 핵심 차이점으로, 선탐색(Line Search)에 **필터법** 을 적용해 수렴 안정성을 높입니다.
+
+<div class="mt-2 text-sm opacity-80">
+
+- 목적함수 값과 제약 위반량을 동시에 추적하는 **파레토 필터** 유지
+- 두 지표 중 하나라도 개선되는 스텝만 수락
+
+</div><br>
+
+### 🔹 헤시안 옵션 비교
+
+| 옵션 | 방법 | 특징 |
+|---|---|---|
+| `activate_hessian=True` | 정확한 헤시안 $S$ | 빠른 수렴, 메모리 소모 |
+| `activate_hessian=False` | **L-BFGS** 근사 | 느린 수렴, 메모리 절약 |
+
+<div class="mt-2 text-sm opacity-80">
+
+- 수렴 허용 오차를 다른 솔버 대비 **100배 더 엄격** 하게 설정
+  (`tol = 1e-2 * tol`)
+
+</div>
+
+<div class="w-full flex justify-center mt-2">
+  <img src="./images/image_2.png" alt="IPOPT Filter" class="w-full max-h-[120px] object-contain rounded shadow-sm border border-gray-200/50" />
+</div>
+
+</div>
+</div>
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# SNES — Semismooth Newton
+<div class="text-xl opacity-80 mb-6">활성 집합을 이용한 변분 부등식의 직접 해법</div>
+
+<div class="text-sm mt-4 mb-4">
+<div grid="~ cols-2 gap-8" class="text-left">
+<div v-click>
+
+### 🔹 상보성 조건으로의 변환
+장애물 문제의 최적성 조건(KKT)을 **상보성 조건** 으로 직접 표현합니다.
+
+$$
+\begin{cases}
+u \geq \phi & \text{(실현 가능성)} \\
+-\Delta u \geq 0 & \text{(쌍대 실현 가능성)} \\
+(u - \phi)(-\Delta u) = 0 & \text{(상보성)}
+\end{cases}
+$$
+
+<div class="mt-2 text-sm opacity-80">
+- 막이 장애물에 **닿은 영역** : 반력 $-\Delta u > 0$이 발생
+- 막이 장애물에서 **떨어진 영역** : 반력 = 0, $-\Delta u = 0$ (자유 평형)
+
+</div><br>
+
+### 🔹 활성 집합 (Active Set) 분류
+
+$$
+\mathcal{A} = \{i \mid u_i = \phi_i\}, \quad \mathcal{I} = \{i \mid u_i > \phi_i\}
+$$
+
+</div>
+<div v-click>
+
+### 🔹 vinewtonssls 알고리즘
+PETSc의 `vinewtonssls`(Semismooth Line Search) 타입은 각 반복에서 활성 집합을 갱신하며 선형 시스템을 반복적으로 풀어냅니다.
+-> 장애물과 접촉한 부분과 접촉하지 않은 부분을 갱신하며 영역을 둘로 나눠 계산.
+
+<div class="mt-2 text-sm opacity-80">
+
+
+</div><br>
+
+### 🔹 경계 조건 설정 (코드)
+```python
+problem.solver.setVariableBounds(
+    phi.x.petsc_vec,   # 하한: 장애물 φ
+    u_max.x.petsc_vec  # 상한: +∞
+)
 ```
-</div>
----
-layout: two-cols
-layoutClass: gap-8
----
 
-# 12. 검증 결과 (1/3)
-<div class="text-xl opacity-80 mb-6">
+<div class="mt-2 text-sm opacity-80">
 
-항력 계수 ($C_D$, Drag Coefficient) 분석
+- 별도의 장벽 파라미터 없이 **PDE 구조를 직접 보존**
+- 선형 서브문제를 **LU 분해(MUMPS)** 로 정확하게 풀어 안정성 확보
 
 </div>
 
-::left::
-
-<div class="flex-col h-full justify-center">
-  <img src="./images/drag_comparison.png" class="w-full rounded shadow-sm border border-gray-200/20" alt="Drag Coefficient" />
-  <img src="./images/drag_comparison_origin.png" class="w-full rounded shadow-sm border border-gray-200/20" alt="Drag Coefficient" />
-  <div class="text-sm mt-3 font-bold opacity-70 text-center">
-
-Fig 1. Drag Coefficient ($C_D$)
-
 </div>
 </div>
-
-::right::
-
-<div class="text-sm mt-12 space-y-6">
-
-### 🔹 항력 계수의 물리적 의미
-유동이 흘러가는 방향(x축)으로 원통이 유체로부터 받는 전체 저항력을 나타냅니다. 이 힘은 유체가 정면으로 부딪히는 압력 저항과 표면을 스치며 발생하는 마찰 저항의 합으로 이루어집니다.
-
-### 🔹 결과 분석
-- 초기의 급격한 변화(Transient state)를 지나, 일정한 평균값을 중심으로 주기적으로 진동하는 안정적인 패턴을 보입니다.
-- FEniCSx 시뮬레이션 결과(실선)가 학계 표준인 Turek 벤치마크 데이터('x' 마커)의 진폭과 위상을 완벽하게 따라가고 있습니다. 이는 물체 표면에 작용하는 유체 역학적 힘이 아주 정확하게 계산되었음을 검증합니다.
-
 </div>
 
 ---
-layout: two-cols
-layoutClass: gap-8
+theme: seriph
+class: text-center
+highlighter: shiki
 ---
 
-# 12. 검증 결과 (2/3)
-<div class="text-xl opacity-80 mb-6">
+# 솔버 비교 요약
+<div class="text-xl opacity-80 mb-6">GALAHAD · IPOPT · SNES의 접근 방식 차이</div>
 
-압력차 ($\Delta p$, Pressure Difference) 분석
+<div grid="~ cols-2 gap-8" class="text-left text-sm mt-4">
+<div v-click>
+
+### 🔹 관점별 분류
+```
+장애물 문제 (부등식 제약 최적화)
+│
+├── GALAHAD / IPOPT ── 최적화 관점
+│        │             "목적함수를 최소화하되
+│        │              제약을 위반하지 말자"
+│        └── 내부점법: 로그 장벽으로 제약을
+│                      목적함수에 흡수
+│
+└── SNES ──────────── 방정식 관점
+         │             "KKT 조건을 비선형
+         │              방정식으로 직접 풀자"
+         └── 활성집합법: 접촉 영역을
+                        반복적으로 식별
+```
+
+</div>
+<div v-click>
+
+###
+
+| | GALAHAD | IPOPT | SNES |
+|---|---|---|---|
+| **관점** | 최적화 | 최적화 | 비선형 방정식 |
+| **핵심** | 로그 장벽 | 로그 장벽 + 필터 | 활성 집합 |
+| **헤시안** | 선택 가능 | 선택 가능 | 항상 사용 |
+| **선형 솔버** | 내장 | 내장 | MUMPS |
+| **특징** | 범용 최적화 | 대규모에 강함 | PDE 특화 |
+
+<div class="mt-2 text-sm opacity-80">
+
+- **GALAHAD / SNES** : `tol = 1e-4`
+- **IPOPT** : `tol = 1e-6` (100배 엄격)
+- **공통** : `max_iter = 500`
 
 </div>
 
-::left::
-
-<div class="flex-col h-full justify-center">
-  <img src="./images/pressure_comparison.png" class="w-full rounded shadow-sm border border-gray-200/20" alt="Pressure Difference" />
-  <img src="./images/pressure_comparison_origin.png" class="w-full rounded shadow-sm border border-gray-200/20" alt="Pressure Difference" />
-  <div class="text-sm mt-3 font-bold opacity-70 text-center">
-
-Fig 2. Pressure Difference ($\Delta p$)
-
 </div>
-</div>
-
-::right::
-
-<div class="text-sm mt-12 space-y-6">
-
-### 🔹 압력차의 물리적 의미
-원통이 유체와 가장 먼저 맞닥뜨리는 정면(정체점, Stagnation point)과, 유동이 떨어져 나가는 원통 바로 뒤쪽 후류(Wake) 영역 간의 압력 차이를 의미합니다.
-
-### 🔹 결과 분석
-- 압력($p$)은 속도($u$)에 비해 수치해석 과정에서 오차가 누적되기 쉽고 훨씬 더 민감하게 반응하는 물리량입니다. 
-- 그럼에도 불구하고 이 그래프가 보여주는 압도적인 일치도는, 우리가 코드로 구현한 **IPCS 알고리즘의 압력 보정 단계(Step 2)**가 매우 효과적으로 작동하여 원통 주변의 미세한 압력장 분포를 정밀하게 포착해냈음을 의미합니다.
-
 </div>
 
 ---
@@ -1347,122 +1071,527 @@ layout: two-cols
 layoutClass: gap-8
 ---
 
-# 12. 검증 결과 (3/3)
-<div class="text-xl opacity-80 mb-6">
+<script setup>
+import { ref } from 'vue'
+const isExpanded = ref(false)
+</script>
 
-양력 계수 ($C_L$, Lift Coefficient) 분석
-
-</div>
+# 7-4. github 코드 실행 
+obstacle_pg.py
 
 ::left::
 
-<div class="flex-col h-full justify-center">
-  <img src="./images/lift_comparison.png" class="w-full rounded shadow-sm border border-gray-200/20" alt="Lift Coefficient" />
-  <img src="./images/lift_comparison_origin.png" class="w-full rounded shadow-sm border border-gray-200/20" alt="Lift Coefficient" />
+<div class="text-sm mt-4">
 
-  <div class="text-sm mt-3 font-bold opacity-70 text-center">
+### 🔹 Mixed FunctionSpace
+* 일반 솔버와 달리 물리 변수 $u$와 잠재 변수 $\psi$를 **동시에** 하나의 혼합 공간 $V = P_k \times P_k$ 에서 풉니다.<br><br>
 
-Fig 3. Lift Coefficient ($C_L$)
+### 🔹 비선형 잔차 $F$ 구성
+* **$v$ 방정식**: $\alpha(\nabla u, \nabla v) + (\psi - \psi_k, v) = \alpha(f,v)$
+* **$w$ 방정식** (latent): $u - e^\psi - \phi = 0$<br><br>
 
+### 🔹 LVPP 외부 루프
+* 매 반복마다 근위 파라미터 $\alpha_k$를 증가시키며 내부 SNES 서브문제를 반복 호출합니다.<br><br>
+
+### 🔹 수렴 지표 기록
+* 매 반복마다 에너지 · 상보성 · 실현가능성 · 뉴턴 스텝 수를 측정하여 `CSV`로 저장합니다.
 </div>
-</div>
-
 ::right::
 
-<div class="text-sm mt-12 space-y-6">
+<button @click="isExpanded = true" class="mt-8 px-4 py-2 bg-gray-800 text-white text-sm rounded shadow-md hover:bg-gray-700 transition-all flex items-center gap-2">
+  <carbon:zoom-in /> 코드 전체화면으로 보기
+</button>
 
-### 🔹 양력 계수의 물리적 의미
-유동의 수직 방향(y축)으로 원통이 위아래로 흔들리며 받는 힘입니다. 원통 뒤쪽에서 시계 방향과 반시계 방향의 소용돌이가 번갈아 떨어져 나가는 현상 때문에 발생합니다.
+<div :class="isExpanded ? 'fixed inset-4 z-50 bg-white shadow-2xl rounded-xl p-8 overflow-y-auto border border-gray-300' : 'overflow-y-auto max-h-[450px] shadow-lg rounded-md border border-gray-200/20 text-sm mt-8'">
 
-### 🔹 결과 분석
-- 0을 중심으로 위아래로 대칭적인 진동을 보이고 있습니다.
-- 벤치마크 데이터와 겹쳐보았을 때, 진동의 진폭(Amplitude)뿐만 아니라 소용돌이가 발생하는 주기(Frequency)까지 완벽하게 일치합니다.
-- 이는 본 시뮬레이션이 비정상(Unsteady) 상태의 복잡한 난류 유동 특성을 물리적으로 완벽하게 모사해냈음을 보여주는 가장 강력한 증거입니다.
+  <div v-show="isExpanded" class="flex justify-between items-center mb-4 border-b pb-4">
+    <div class="text-xl font-bold text-gray-800">generate_mesh_gmsh.py (전체 코드)</div>
+    <button @click="isExpanded = false" class="px-4 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-all text-sm flex items-center gap-1">
+      <carbon:close /> 닫기
+    </button>
+  </div>
 
+  ```python {all} twoslash
+  """
+
+Obstacle problem based on experiment 4 in [2].
+
+The FEniCSx code solve this problem is based on [3]:
+
+SPXD License: MIT License
+
+Original license file [../../licenses/LICENSE.surowiec](../../licenses/LICENSE.surowiec)
+is included in the repository.
+
+[1] Keith, B. and Surowiec, T.M., Proximal Galerkin: A Structure-Preserving Finite Element Method
+for Pointwise Bound Constraints. Found Comput Math (2024). https://doi.org/10.1007/s10208-024-09681-8
+[2] Keith, B., Surowiec, T. M., & Dokken, J. S. (2023). Examples for the Proximal Galerkin Method
+    (Version 0.1.0) [Computer software]. https://github.com/thomas-surowiec/proximal-galerkin-examples
+"""
+
+import argparse
+from pathlib import Path
+
+from mpi4py import MPI
+
+import basix
+import numpy as np
+import pandas as pd
+import ufl
+from dolfinx import default_scalar_type, fem, io, mesh
+from dolfinx.fem.petsc import NonlinearProblem
+from ufl import Measure, conditional, exp, grad, inner, lt
+
+
+def rank_print(string: str, comm: MPI.Comm, rank: int = 0):
+    """Helper function to print on a single rank
+
+    :param string: String to print
+    :param comm: The MPI communicator
+    :param rank: Rank to print on, defaults to 0
+    """
+    if comm.rank == rank:
+        print(string)
+
+
+def allreduce_scalar(form: fem.Form, op: MPI.Op = MPI.SUM) -> np.floating:
+    """Assemble a scalar form over all processes and perform a global reduction
+
+    :param form: Scalar form
+    :param op: MPI reduction operation
+    """
+    comm = form.mesh.comm
+    return comm.allreduce(fem.assemble_scalar(form), op=op)
+
+
+def solve_problem(
+    filename: Path,
+    polynomial_order: int,
+    maximum_number_of_outer_loop_iterations: int,
+    alpha_scheme: str,
+    alpha_max: float,
+    tol_exit: float,
+):
+    """ """
+
+    # Create mesh
+    with io.XDMFFile(MPI.COMM_WORLD, filename, "r") as xdmf:
+        msh = xdmf.read_mesh(name="mesh")
+
+    # Define FE subspaces
+    P = basix.ufl.element("Lagrange", msh.basix_cell(), polynomial_order)
+    mixed_element = basix.ufl.mixed_element([P, P])
+    V = fem.functionspace(msh, mixed_element)
+
+    # Define functions and parameters
+    alpha = fem.Constant(msh, default_scalar_type(1))
+    f = fem.Constant(msh, 0.0)
+    # Define BCs
+    msh.topology.create_connectivity(msh.topology.dim - 1, msh.topology.dim)
+    facets = mesh.exterior_facet_indices(msh.topology)
+    V0, _ = V.sub(0).collapse()
+    dofs = fem.locate_dofs_topological((V.sub(0), V0), entity_dim=1, entities=facets)
+
+    u_bc = fem.Function(V0)
+    u_bc.x.array[:] = 0.0
+    bcs = fem.dirichletbc(value=u_bc, dofs=dofs, V=V.sub(0))
+
+    # Define solution variables
+    sol = fem.Function(V)
+    sol_k = fem.Function(V)
+
+    u, psi = ufl.split(sol) # 두 성분을 각각 분리하여 계산에 이용
+    u_k, psi_k = ufl.split(sol_k)
+
+    def phi_set(x): # 장애물 생성 함수
+        r = np.sqrt(x[0] ** 2 + x[1] ** 2)
+        r0 = 0.5 # 반지름 = 0.5
+        beta = 0.9
+        b = r0 * beta
+        tmp = np.sqrt(r0**2 - b**2)
+        B = tmp + b * b / tmp
+        C = -b / tmp
+        cond_true = B + r * C
+        cond_false = np.sqrt(r0**2 - r**2)
+        true_indices = np.flatnonzero(r > b)
+        cond_false[true_indices] = cond_true[true_indices]
+        return cond_false
+
+    quadrature_degree = 6
+    Qe = basix.ufl.quadrature_element(msh.topology.cell_name(), degree=quadrature_degree)
+    Vq = fem.functionspace(msh, Qe)
+    # Lower bound for the obstacle
+    phi = fem.Function(Vq, name="phi")
+    phi.interpolate(phi_set)
+
+    # Define non-linear residual
+    (v, w) = ufl.TestFunctions(V)
+    dx = Measure("dx", domain=msh, metadata={"quadrature_degree": quadrature_degree})
+    F = (
+        alpha * inner(grad(u), grad(v)) * dx   # ① α(∇u, ∇v)
+        + psi * v * dx                          # ② (ψ, v)
+        + u * w * dx                            # ③ (u, w)
+        - exp(psi) * w * dx                     # ④ -(e^ψ, w)
+        - phi * w * dx                          # ⑤ -(φ, w)
+        - alpha * f * v * dx                    # ⑥ -α(f, v)
+        - psi_k * v * dx                        # ⑦ -(ψ_k, v)
+    )
+    J = ufl.derivative(F, sol)
+
+    # Setup non-linear problem
+    petsc_options = {
+        "ksp_type": "preonly", # 선형 솔버: 직접법
+        "pc_type": "lu", # 전처리: LU 분해
+        "pc_factor_mat_solver_type": "mumps", # 병렬 직접 솔버 MUMPS
+        "ksp_error_if_not_converged": True,
+        "ksp_monitor": None,
+        "snes_monitor": None,
+        "snes_error_if_not_converged": True,
+        "snes_linesearch_type": "none", # 선탐색 없음 (순수 뉴턴)
+        "snes_rtol": 1e-6, # 상대 수렴 허용 오차
+        "snes_max_it": 100, # 최대 뉴턴 반복 횟수     
+    }
+    problem = NonlinearProblem(
+        F, u=sol, bcs=[bcs], J=J, petsc_options=petsc_options, petsc_options_prefix="obstacle_"
+    )
+
+    # observables
+    energy_form = fem.form(0.5 * inner(grad(u), grad(u)) * dx - f * u * dx) # 에너지 식.
+    complementarity_form = fem.form((psi_k - psi) / alpha * u * dx) # 반복 계산 간 차이
+    feasibility_form = fem.form(conditional(lt(u, 0), -u, fem.Constant(msh, 0.0)) * dx) # 음수 영역의 크기를 측정(제약 위반인지 확인)
+    dual_feasibility_form = fem.form(
+        conditional(lt(psi_k, psi), (psi - psi_k) / alpha, fem.Constant(msh, 0.0)) * dx
+    ) # ψ_k - ψ >= 0인지 확인
+    H1increment_form = fem.form(inner(grad(u - u_k), grad(u - u_k)) * dx + (u - u_k) ** 2 * dx)
+    # u의 변화량 확인 후 이 값이 tol_exit보다 작으면 계산 종료
+    L2increment_form = fem.form((exp(psi) - exp(psi_k)) ** 2 * dx)
+    # ψ의 변화량을 e^ψ, 즉 u의 영역에서 측정
+
+    # Proximal point outer loop
+    n = 0
+    increment_k = 0.0
+    sol.x.array[:] = 0.0
+    sol_k.x.array[:] = sol.x.array[:]
+    alpha_k = 1 #근위 파라미터, 반복마다 업데이트되는 스칼라 상수
+    step_size_rule = alpha_scheme
+    C = 1.0
+    r = 1.5
+    q = 1.5
+
+    energies = []
+    complementarities = []
+    feasibilities = []
+    dual_feasibilities = []
+    Newton_steps = []
+    step_sizes = []
+    primal_increments = []
+    latent_increments = []
+    for k in range(maximum_number_of_outer_loop_iterations):
+        # Update step size
+        if step_size_rule == "constant":
+            alpha.value = C # α = 1 고정
+        elif step_size_rule == "double_exponential":
+            try:
+                alpha.value = max(C * r ** (q**k) - alpha_k, C) # α ~ 1.5^(1.5^k)
+            except OverflowError:
+                pass
+            alpha_k = alpha.value
+            alpha.value = min(alpha.value, alpha_max) # 상한 적용
+        else:
+            step_size_rule == "geometric"
+            alpha.value = C * r**k # α = 1.5^k (등비수열)
+        rank_print(f"OUTER LOOP {k + 1} alpha: {alpha.value}", msh.comm)
+
+        # Solve problem
+        problem.solve()
+        converged_reason = problem.solver.getConvergedReason()
+        n = problem.solver.getIterationNumber()
+        rank_print(f"Newton steps: {n}   Converged: {converged_reason}", msh.comm)
+
+        # Check outer loop convergence
+        energy = allreduce_scalar(energy_form)
+        complementarity = np.abs(allreduce_scalar(complementarity_form))
+        feasibility = allreduce_scalar(feasibility_form)
+        dual_feasibility = allreduce_scalar(dual_feasibility_form)
+        increment = np.sqrt(allreduce_scalar(H1increment_form))
+        latent_increment = np.sqrt(allreduce_scalar(L2increment_form))
+
+        tol_pp = increment
+
+        if increment_k > 0.0:
+            rank_print(
+                f"Increment size: {increment}" + f"   Ratio: {increment / increment_k}", msh.comm
+            )
+        else:
+            rank_print(f"Increment size: {increment}", msh.comm)
+        rank_print("", msh.comm)
+
+        energies.append(energy)
+        complementarities.append(complementarity)
+        feasibilities.append(feasibility)
+        dual_feasibilities.append(dual_feasibility)
+        Newton_steps.append(n)
+        step_sizes.append(np.copy(alpha.value))
+        primal_increments.append(increment)
+        latent_increments.append(latent_increment)
+
+        if tol_pp < tol_exit:
+            break
+
+        # Update sol_k with sol_new
+        sol_k.x.array[:] = sol.x.array[:]
+        increment_k = increment
+
+    # # Save data
+    cwd = Path.cwd()
+    output_dir = cwd / "output"
+    output_dir.mkdir(exist_ok=True)
+
+    # Create output space for bubble function
+    V_primal, primal_to_mixed = V.sub(0).collapse()
+
+    num_primal_dofs = V_primal.dofmap.index_map.size_global
+
+    phi_out_space = fem.functionspace(msh, basix.ufl.element("Lagrange", msh.basix_cell(), 6))
+    phi_out = fem.Function(phi_out_space, name="phi")
+    phi_out.interpolate(phi_set)
+    with io.VTXWriter(msh.comm, output_dir / "phi.bp", [phi_out]) as bp:
+        bp.write(0.0)
+    if MPI.COMM_WORLD.rank == 0:
+        df = pd.DataFrame()
+        df["Energy"] = energies
+        df["Complementarity"] = complementarities
+        df["Feasibility"] = feasibilities
+        df["Dual Feasibility"] = dual_feasibilities
+        df["Newton steps"] = Newton_steps
+        df["Step sizes"] = step_sizes
+        df["Primal increments"] = primal_increments
+        df["Latent increments"] = latent_increments
+        df["Polynomial order"] = np.full(k + 1, polynomial_order)
+        df["dofs"] = np.full(k + 1, num_primal_dofs)
+        df["Step size rule"] = [step_size_rule] * (k + 1)
+        filename = f"./example_polyorder{polynomial_order}_{num_primal_dofs}.csv"
+        print(f"Saving data to: {str(output_dir / filename)}")
+        df.to_csv(output_dir / filename, index=False)
+        rank_print(df, msh.comm)
+
+    if k == maximum_number_of_outer_loop_iterations - 1:
+        rank_print("Maximum number of outer loop iterations reached", msh.comm)
+    return sol, sum(Newton_steps)
+
+
+# -------------------------------------------------------
+if __name__ == "__main__":
+    desc = "Run examples from paper"
+    parser = argparse.ArgumentParser(
+        description=desc, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument(
+        "--file-path",
+        "-f",
+        dest="filename",
+        type=Path,
+        required=True,
+        help="Name of input file",
+    )
+    parser.add_argument(
+        "--polynomial_order",
+        "-p",
+        dest="polynomial_order",
+        type=int,
+        default=1,
+        choices=[1, 2],
+        help="Polynomial order of primal space",
+    )
+    parser.add_argument(
+        "--alpha-scheme",
+        dest="alpha_scheme",
+        type=str,
+        default="constant",
+        choices=["constant", "double_exponential", "geometric"],
+        help="Step size rule",
+    )
+    parser.add_argument(
+        "--max-iter",
+        "-i",
+        dest="maximum_number_of_outer_loop_iterations",
+        type=int,
+        default=100,
+        help="Maximum number of outer loop iterations",
+    )
+    parser.add_argument(
+        "--alpha-max",
+        "-a",
+        dest="alpha_max",
+        type=float,
+        default=1e5,
+        help="Maximum alpha",
+    )
+    parser.add_argument(
+        "--tol",
+        "-t",
+        dest="tol_exit",
+        type=float,
+        default=1e-6,
+        help="Tolerance for exiting Newton iteration",
+    )
+    args = parser.parse_args()
+    solve_problem(
+        args.filename,
+        args.polynomial_order,
+        args.maximum_number_of_outer_loop_iterations,
+        args.alpha_scheme,
+        args.alpha_max,
+        args.tol_exit,
+    )
+  ```
+
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 8-1. 실행 결과 분석
+
+<div class="text-xl opacity-80 mb-8">
+  각 솔버의 수치 해석 결과 비교
+</div>
+
+<div grid="~ cols-2 gap-8" class="text-left">
+
+<div v-click>
+
+### 🔹 GALAHAD
+<div class="w-full flex flex-col items-center">
+  <img src="./images/image_2.png" alt="GALAHAD 결과" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">GALAHAD 솔버 실행 결과</div>
+</div>
+
+</div>
+
+<div v-click>
+
+### 🔹 SNES
+<div class="w-full flex flex-col items-center">
+  <img src="./images/image_2.png" alt="IPOPT 결과" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">SNES 솔버 실행 결과</div>
+</div>
+
+</div>
+</div>
+
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 8-2. 실행 결과 분석
+
+<div class="text-xl opacity-80 mb-8">
+  각 솔버의 수치 해석 결과 비교
+</div>
+
+<div grid="~ cols-2 gap-8" class="text-left">
+
+<div v-click>
+
+### 🔹 IPOPT(with hessian)
+<div class="w-full flex flex-col items-center">
+  <img src="./images/image_2.png" alt="GALAHAD 결과" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">IPOPT(with hessian) 솔버 실행 결과</div>
+</div>
+
+</div>
+
+<div v-click>
+
+### 🔹 IPOPT(without hessian)
+<div class="w-full flex flex-col items-center">
+  <img src="./images/image_2.png" alt="IPOPT 결과" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">IPOPT(without hessian) 솔버 실행 결과</div>
+</div>
+
+</div>
 </div>
 ---
-layout: center
+theme: seriph
+class: text-center
+highlighter: shiki
 ---
 
-# 13. 고점도 유체의 정량적 결과
-<div class="text-xl opacity-80 mb-6">ParaView를 활용한 von Kármán Vortex Street 애니메이션</div>
+# 8-3. 실행 결과 분석
 
-<div class="text-sm mt-4 mb-6">
+<div class="text-xl opacity-80 mb-8">
+  각 솔버의 수치 해석 결과 비교
+</div>
 
-  고점도(꿀 등)의 유체가 동일 조건 하에 흐르는 경우에 대하여 시뮬레이션 하였습니다.(mu: 0.001 $&rightarrow;$ 2)
-이에 따라 비선형 항(대류항)보다 점성항의 영향이 커져 결과의 비선형성이 감소함을 알 수 있습니다.
+<div grid="~ cols-2 gap-8" class="text-left">
+
+<div v-click>
+
+### 🔹 Proximal Galerkin(1차)
+<div class="w-full flex flex-col items-center">
+  <img src="./images/image_2.png" alt="GALAHAD 결과" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">Proximal Galerkin(1차) 솔버 실행 결과</div>
+</div>
 
 </div>
 
-<div v-click grid="~ cols-2 gap-8" class="mt-4">
-  <div class="text-center">
-    <h3 class="mb-4">Velocity Field (u)</h3>
-    <video controls autoplay loop muted class="w-full rounded shadow-lg border border-gray-200/20">
-      <source src="./images/u_honey.mp4" type="video/mp4">
-      브라우저가 비디오 태그를 지원하지 않습니다.
-    </video>
-  </div>
+<div v-click>
 
-  <div class="text-center">
-    <h3 class="mb-4">Pressure Field (p)</h3>
-    <video controls autoplay loop muted class="w-full rounded shadow-lg border border-gray-200/20">
-      <source src="./images/p_honey.mp4" type="video/mp4">
-      브라우저가 비디오 태그를 지원하지 않습니다.
-    </video>
-  </div>
+### 🔹 Proximal Galerkin(2차)
+<div class="w-full flex flex-col items-center">
+  <img src="./images/image_2.png" alt="IPOPT 결과" class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">Proximal Galerkin(2차) 솔버 실행 결과</div>
+</div>
+
+</div>
 </div>
 
 ---
-layout: center
+theme: seriph
+class: text-center
+highlighter: shiki
 ---
 
-# 14. 고점도 유체의 정량적 결과
-<div class="text-xl opacity-80 mb-6">소용돌이가 사라진 유동의 물리량 안정화</div>
+# 9. 향후 발전 방향 (Develop Direction)
+<div class="text-xl opacity-80 mb-6">멤브레인을 이용한 고체 슬러리/액체 분리 모델링</div>
 
-<div grid="~ cols-3 gap-4" class="mt-6 w-full">
-  <div class="text-center flex flex-col items-center">
-    <img src="./images/drag_comparison_honey.png" class="max-h-[160px] w-auto rounded shadow-sm border border-gray-200/20" alt="Drag (Honey)" />
-    <div class="text-[11px] mt-2 font-bold opacity-70">Fig 1. Drag Coefficient ($C_D$)</div>
-  </div>
-  <div class="text-center flex flex-col items-center">
-    <img src="./images/pressure_comparison_honey.png" class="max-h-[160px] w-auto rounded shadow-sm border border-gray-200/20" alt="Pressure (Honey)" />
-    <div class="text-[11px] mt-2 font-bold opacity-70">Fig 2. Pressure Diff. ($\Delta p$)</div>
-  </div>
-  <div class="text-center flex flex-col items-center">
-    <img src="./images/lift_comparison_honey.png" class="max-h-[160px] w-auto rounded shadow-sm border border-gray-200/20" alt="Lift (Honey)" />
-    <div class="text-[11px] mt-2 font-bold opacity-70">Fig 3. Lift Coefficient ($C_L$)</div>
-  </div>
+<div class="text-sm">
+<div grid="~ cols-2 gap-4" class="mt-4 mb-4">
+<div>
+
+### 🔹 공학적 응용 프레임워크 확장
+* 본 알고리즘이 적용된 고체 접촉(Membrane-Obstacle) 모델을 응용하여 **화공생명공학의 분리 공정 모델링**으로 발전시킬 수 있습니다.
+* 여과막(Membrane)을 통과하는 액체와 통과하지 못하는 고체 슬러리(Slurry) 혼합물 분리 시스템에 적용합니다.
+
+</div>
+<div>
+
+### 🔹 점별 값 제약(Value Constraint)의 활용
+* 고체 입자가 여과막을 뚫지 못하고 쌓이면서 Cake layer를 형성하는 물리적 현상을 $u \ge \phi$ (입자 위치 $\ge$ 여과막 표면) 형태의 제약으로 모사합니다.
+* 이를 FEniCSx 기반 LVPP 솔버로 계산하면, 격자 의존성 없이 압력 분포 및 막의 미세 변형을 대규모로 병렬 처리할 수 있을 것으로 기대됩니다.
+
+</div>
+</div>
 </div>
 
-<div class="text-[13px] mt-8 space-y-3 px-4">
-  <ul class="list-disc pl-5 leading-relaxed">
-    <li><strong>주기적 진동의 소멸:</strong> 
-
-유체가 원통을 부드럽게 감싸고 돌게 되면서 양력($C_L$)의 진동이 사라지고 0에 수렴합니다. 항력($C_D$)과 압력차($\Delta p$) 역시 일정한 상숫값을 유지하는 정상 상태(Steady-state)에 도달했습니다.
-
-</li>
-    <li><strong>비선형항의 무력화 입증:</strong> <em>
-"비선형항이 왜 유동을 복잡하게 만드는가?"</em>
-
-라는 질문에 대한 완벽한 반증입니다. 점성항($\mu \nabla^2 u$)을 극대화하여 대류항을 억누르자 난류성 거동이 완전히 사라졌습니다. 이는 나비에-스토크스 방정식에서 비선형 대류항이 유체의 섞임(Mixing)을 유발하는 핵심 원인임을 증명합니다.
-</li>
-  </ul>
+<div class="w-full flex justify-center mt-2">
+  <img src="./images/image_1.png" alt="Slurry Separation Model" class="w-full max-h-[220px] object-contain rounded shadow-sm" />
 </div>
+
 ---
 layout: center
 class: text-center
 ---
 
-# 발표를 들어주셔서 감사합니다! 🚀
-<div class="text-xl opacity-80 mb-8">질의응답 (Q&A)</div>
+# Thank You
 
-<div class="mt-16 flex flex-col items-center justify-center gap-4">
-  <div class="text-[14px] opacity-70 mb-2">
-    전체 소스 코드와 시각화 애니메이션 파일은 아래 저장소에 공개되어 있습니다.
-  </div>
-  
-  <a href="https://github.com/uzaramen108/presentation" target="_blank" class="flex items-center gap-2 text-blue-400 hover:text-blue-500 transition-colors text-lg border border-gray-200/20 px-6 py-3 rounded-lg bg-gray-50/5">
-    <carbon:logo-github class="text-2xl" />
-    github.com/uzaramen108/presentation
-  </a>
+<div class="mt-8 text-xl">
+  Q & A
 </div>
