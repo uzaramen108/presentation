@@ -1,6 +1,5 @@
 ---
 theme: seriph
-background: ./images/white_background.png
 title: LVPP 알고리즘을 활용한 장애물 문제 분석
 info: |
   ## Proximal Galerkin & Obstacle Problem
@@ -13,14 +12,25 @@ mdc: true
 duration: 20min
 ---
 
+<div class="absolute inset-0 bg-white z-0" />
+
+<img
+  src="./images/logo.png"
+  class="absolute inset-0 w-full h-full object-contain opacity-15 z-0 pointer-events-none"
+/>
+
+<div class="relative z-10 flex flex-col items-center justify-center h-full" color="black">
+
 # LVPP 알고리즘을 활용한
 # 장애물 문제(Obstacle Problem) 분석
 
-<div class="text-xl opacity-80 mb-8">
+<div class="text-xl opacity-80 mb-8 mt-4">
   Proximal Galerkin 기반의 구조 보존형 유한요소법
 </div>
 
-<div class="abs-br m-6 text-xl">
+</div>
+
+<div class="absolute bottom-6 right-6 text-xl z-10" color="black">
   윤현준 / 박기성 / 박찬서 / 이민용
 </div>
 
