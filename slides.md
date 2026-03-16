@@ -285,7 +285,11 @@ $$
 
 <div class="w-full flex flex-col items-center justify-center mt-6">
   <img src="./images/obstacle_problem_preview.png" alt="Obstacle Cross Section" class="w-full max-h-[200px] object-contain rounded shadow-sm border border-gray-200/50" />
-  <div class="text-xs opacity-70 mt-2">장애물 $\phi(x,y)$의 2D 단면 및 막의 접촉 형태</div>
+  <div class="text-xs opacity-70 mt-2">
+  
+  장애물 $\phi(x,y)$의 2D 단면 및 막의 접촉 형태
+  
+  </div>
 </div>
 
 </div>
