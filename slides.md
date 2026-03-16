@@ -75,10 +75,7 @@ highlighter: shiki
 
 </div>
 </div>
-</div>---
-theme: seriph
-class: text-center
-highlighter: shiki
+</div>
 
 ---
 theme: seriph
