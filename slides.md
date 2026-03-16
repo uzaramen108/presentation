@@ -74,11 +74,6 @@ highlighter: shiki
 - **해결** : 이를 효율적으로 풀기 위해 **LVPP (Latent Variable Proximal Point)** 프레임워크 도입
 
 </div>
-
-<div class="w-full flex justify-center mt-6">
-  <img src="./images/image_1.png" alt="Obstacle Problem Membrane" class="w-full max-h-[160px] object-contain rounded shadow-sm" />
-</div>
-
 </div>
 </div>---
 theme: seriph
