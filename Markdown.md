@@ -19,15 +19,20 @@
 
 원형 단면의 3D 파이프 내부를 유체가 흐르다가 중간에 위치한 **반투막(semi-permeable membrane)**과 만나는 문제입니다.
 
-| 파라미터 | 값 |
-|---|---|
-| 파이프 길이 $L$ | 5 m |
-| 파이프 반지름 $R$ | 0.5 m |
-| 막 위치 $x_m$ | 3.75 m |
-| 유체 밀도 $\rho$ | 1.0 kg/m³ |
-| 유체 점성 $\mu$ | 0.01 Pa·s |
-| 막 투과율 $\kappa$ | 5×10⁻³ m² |
-| 막 장력 $T$ | 25 N/m |
+| 파라미터 | 값 | 비고 |
+|---|---|---|
+| 파이프 길이 $L$ | 5 m | |
+| 파이프 반지름 $R$ | 0.5 m | |
+| 막 위치 $x_m$ | 3.75 m | 파이프 끝에서 1.25m |
+| 유체 밀도 $\rho$ | 1.0 kg/m³ | |
+| 유체 점성 $\mu$ | 0.01 Pa·s | |
+| 최대 입구 유속 $u_{max}$ | 10.0 m/s | Poiseuille + sin 프로파일 |
+| Brinkman 저항 $R_m = \mu/\kappa$ | 50.0 Pa·s/m² | 초기값; 물리 기반은 $\mu/\kappa = 2$ |
+| 막 장력 $T$ | 25 N/m | |
+| 시뮬레이션 시간 | 8.0 s (Brinkman) / 20.0 s (ALE) | |
+| 타임스텝 수 | 10,000 (Brinkman) / 20,000 (ALE) | |
+| 유체 메시 크기 | 최대 0.15 m | |
+| 막 메시 크기 | 최대 0.05 m | |
 
 입구 속도는 Poiseuille 포물선 프로파일에 사인파 시간 변화를 적용합니다:
 
@@ -155,7 +160,7 @@ $\mathbf{1}_{\Gamma_m^\delta}$는 막 근방 영역에서만 1, 나머지에서 
 
 초기 구현에서는 $R_m = 50$을 임의로 설정했으나, 이후 물리량 기반으로 $R_m = \mu/\kappa$로 수정하였습니다.
 
-<video src="./video/Brinkman-velocity.mp4" controls></video>
+![Brinkman velocity](./video/Brinkman-velocity.gif)
 
 ---
 
@@ -174,7 +179,7 @@ $$\Delta p = p^- - p^+ = \frac{\mu}{\kappa}(u\cdot n)\cdot d_{mem}$$
 
 Brinkman 방식으로 시뮬레이션한 결과를 ParaView로 확인하면, **막 전후 압력 분포가 거의 동일**하게 나타납니다. 압력이 막을 기점으로 불연속적으로 떨어지는 현상(압력 점프 $[\![p]\!]$)이 관찰되지 않습니다.
 
-<video src="./video/Brinkman-pressure.mp4" controls></video>
+![Brinkman velocity](./video/Brinkman-pressure.gif)
 
 ### 4.3 수학적 원인
 
