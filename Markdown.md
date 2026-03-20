@@ -154,6 +154,7 @@ $\mathbf{1}_{\Gamma_m^\delta}$는 막 근방 영역에서만 1, 나머지에서 
 | 저항 $\to 0$ (자유 통과) | 저항 $\to \infty$ (완전 차단) |
 
 초기 구현에서는 $R_m = 50$을 임의로 설정했으나, 이후 물리량 기반으로 $R_m = \mu/\kappa$로 수정하였습니다.
+<video src="./video/Brinkman-velocity.mp4" controls></video>
 
 ---
 
@@ -171,6 +172,7 @@ $$\Delta p = p^- - p^+ = \frac{\mu}{\kappa}(u\cdot n)\cdot d_{mem}$$
 ### 4.2 ParaView 시각화 결과
 
 Brinkman 방식으로 시뮬레이션한 결과를 ParaView로 확인하면, **막 전후 압력 분포가 거의 동일**하게 나타납니다. 압력이 막을 기점으로 불연속적으로 떨어지는 현상(압력 점프 $[\![p]\!]$)이 관찰되지 않습니다.
+<video src="./video/Brinkman-pressure.mp4" controls></video>
 
 ### 4.3 수학적 원인
 
