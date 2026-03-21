@@ -16,16 +16,17 @@ mdc: true
 
 <div class="relative z-10 flex flex-col items-center justify-center h-full" color='black'>
 
-# 유체-막 상호작용 시뮬레이션
+# Obstacle Problem의 Developing 과정
+
 
 <div class="text-xl opacity-80 mb-8 mt-4">
-  Navier-Stokes + Brinkman + Darcy + ALE
+  Navier-Stokes, Brinkman, Darcy, ALE
 </div>
 
 </div>
 
 <div class="absolute bottom-6 right-6 text-xl z-10" color='black'>
-  윤현준 / 박기성 / 박찬서 / 이민용
+  Team FEniCS: 이민용 / 박기성 / 박찬서 / 윤현준
 </div>
 
 ---
@@ -402,7 +403,7 @@ class: text-center
 highlighter: shiki
 ---
 
-# 3-1. 메시 설정: 파이프 단독 구조
+# 3-2. 메시 설정: 파이프 단독 구조
 
 <div class="text-xl opacity-80 mb-6">Brinkman 방식 — 분리된 2개 메시</div>
 
@@ -519,9 +520,9 @@ class: text-center
 highlighter: shiki
 ---
 
-# 4. Brinkman 저항 모델
+# 4. Brinkman 방정식 적용 시도
 
-<div class="text-xl opacity-80 mb-6">막을 다공성 매질로 근사</div>
+<div class="text-xl opacity-80 mb-6">압력 분포 및 물리적 타당성</div>
 
 <div grid="~ cols-2 gap-8" class="text-left text-sm">
 
@@ -536,70 +537,6 @@ $$\rho\frac{\partial u}{\partial t} + \rho(u\cdot\nabla u) = -\nabla p + \mu\nab
 - $\kappa$: 막의 투과율 (작을수록 저항 증가)
 - $\mu/\kappa$: 물리적 저항 계수
 
-### 🔹 NS 방정식의 위계
-```
-Navier-Stokes (완전)
-      ↓ Re → 0
-  Stokes
-      ↓ 다공성 매질 균질화 + 점성항 유지
-  Brinkman         ← 반투막에 적용
-      ↓ 점성항 추가 무시
-  Darcy 법칙
-```
-
-</div>
-
-<div v-click>
-
-### 🔹 초기 구현 vs 개선된 구현
-
-**① 초기 (문제 있음):**
-
-$$R_m = 50\text{ (임의)}, \quad |x - x_m| < 0.2\text{m (두께 0.4m)}$$
-```
-α
-50──────────────
-   ████████████
-───────────────
-   ←  0.4m  →  너무 두꺼움
-```
-
-**② 개선 (tanh 집중화):**
-
-$$\alpha(x) = \frac{\mu}{\kappa} \cdot \frac{1}{2}\!\left(1 + \tanh\frac{t_{half} - |x - x_m|}{\varepsilon}\right)$$
-```
-α
-│    █
-μ/κ  ███
-│   █████
-───────────
-   ←0.04m→  얇고 집중
-```
-
-$t_{half} \approx 0.02\text{m}$, $\alpha_{max} = \mu/\kappa$ (물리량 기반)
-
-</div>
-</div>
-
----
-theme: seriph
-class: text-center
-highlighter: shiki
----
-
-# 4-1. Brinkman가 작용하는 방식
-
-<div class="text-xl opacity-80 mb-6">압력 분포 및 물리적 타당성</div>
-
-<div grid="~ cols-2 gap-8" class="text-left text-sm">
-
-<div v-click>
-
-### 🔹 기대되는 물리 현상
-
-* 반투막 통과 시 Darcy 법칙에 의해 **압력 강하(불연속)** 가 반드시 발생해야 합니다:
-
-$$\Delta p = p^- - p^+ = \frac{\mu}{\kappa}(u \cdot n) \cdot d_{mem}$$
 
 <br>
 
@@ -615,8 +552,7 @@ Brinkman:   p⁻ ━━━╲_____╱━━━ p⁺  (완만)
 
 <div v-click>
 
-
-### 🔹 남은 한계
+### 🔹 한계
 
 <br>
 
@@ -639,7 +575,7 @@ class: text-center
 highlighter: shiki
 ---
 
-# 5. Darcy 표면항 — 물리적으로 올바른 해법
+# 5. Darcy 표면항 — 물리적으로 근거있는 해법
 
 <div class="text-xl opacity-80 mb-6">막을 2D 내부 경계면으로 처리</div>
 
@@ -677,11 +613,13 @@ $$F_1 += \int_{\Gamma_m} \frac{\mu}{\kappa} \langle u \rangle \cdot n^{+} \, \la
 | 저항 계수 | 기준 | △ 근사 | ✅ $\kappa$ |
 | 법선 방향만 | ✅ | ❌ 전방향 | ✅ |
 | 접선 차단 | ✅ | ❌ | ✅ BJS |
+| 실행 난이도 | | 낮음 | 높음 |
 | 적분 형태 | — | 부피 $dx$ | 표면 $dS$ |
 
 </div>
 </div>
 </div>
+
 ---
 theme: seriph
 class: text-center
@@ -700,38 +638,33 @@ highlighter: shiki
 
 | 관점 | 격자 움직임 | 적합 대상 | 한계 |
 |---|---|---|---|
-| **Eulerian** | 고정 | 유체 | 움직이는 경계 추적 불가 |
-| **Lagrangian** | 물질과 함께 | 고체 | 유체 적용 시 격자 뒤틀림 |
+| **Eulerian** | 고정 | 유체 | 유동 경계 추적 불가 |
+| **Lagrangian** | 물질과 함께 | 고체 | 유체에 적용 시 격자 뒤틀림 |
 | **ALE** | 독립적 | FSI | — |
+
+<br>
 
 ### 🔹 왜 ALE가 필요한가?
 
-막이 압력을 받아 변형되면 유체 도메인 $\Omega_f(t)$가 시간에 따라 변합니다.
-```
-t=0:  ──────[막]──────   (평평)
-t=Δt: ────[막]────        (휘어짐)
+<br>
 
-고정 메시: 변형된 형상을 인식 못함
-           → t=0 행렬로 t=T 계산 → 물리 위반 → 발산
-```
+* 격자가 물질(유체)의 이동과 독립적으로 조성되기에 격자 뒤틀림을 방지하며 유체 거동 포착 가능
 
 </div>
 
 <div v-click>
 
-### 🔹 ALE의 역할 분담
-```
-구조물 경계면(막):
-  격자가 막과 함께 이동 (Lagrangian)
-            ↓
-  유체 내부:
-  격자가 꼬이지 않도록 부드럽게 재배치 (Eulerian)
-            ↓
-  그 사이:
-  독립적인 속도 w_mesh로 이동 (ALE)
-```
+### 🔹 ALE의 시각화
 
-### 🔹 행렬을 매 스텝 재조립해야 하는 이유
+<div class="w-full flex flex-col items-center mt-2">
+  <img src="./images/ALE_description.png"
+    class="w-full max-h-[320px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">
+    
+  </div>
+</div>
+
+<!-- ### 🔹 행렬을 매 스텝 재조립해야 하는 이유
 ```python
 # 루프 안에서 매 스텝:
 A1.zeroEntries()
@@ -741,7 +674,7 @@ s1.setOperators(A1)  # 전처리기도 갱신
 ```
 
 메시 좌표 변경 → $dx$, $FacetNormal$, 야코비안 모두 변경
-→ 재조립 없으면 물리 법칙 위반
+→ 재조립 없으면 물리 법칙 위반 -->
 
 </div>
 </div>
@@ -816,14 +749,18 @@ $$-\nabla\cdot(k\nabla d) = 0 \quad \text{in } \Omega_f$$
 
 경계 조건:
 
-$$d = \Delta w\,\hat{e}_x \;\text{ on } \Gamma_m, \qquad d = 0 \;\text{ on } \partial\Omega_f$$
+$$d = \Delta w\,\hat{e}_x \;\text{ on } \Gamma_m, 
+\qquad d = 0 \;\text{ on } \partial\Omega_f$$
 
 - $d$: 메시 변위 벡터
-- $\Delta w = w^{n+1} - w^n$: 막의 **증분** 변위
-- $\hat{e}_x$: x방향 단위벡터 (막이 x방향으로 휨)
-- $\delta$: 0 나누기 방지 오프셋
+- $\Delta w = w^{n+1} - w^n$: 막의 **증분** 변위 (스칼라)
+- $\hat{e}_x$: x방향 단위벡터
+- **가정**: 막 변위가 주로 x방향(파이프 축 방향)으로 발생하며,
+  y, z 방향 면내 변형(in-plane deformation)은 무시합니다.
+  이는 소변형(small deformation) 가정 하에서 유효합니다.
 
-라플라스 방정식의 해는 경계 조건을 만족하면서 **가장 매끄러운 함수**임이 수학적으로 보장됩니다.
+<!--라플라스 방정식의 해는 경계 조건을 만족하면서
+**가장 매끄러운 함수**임이 수학적으로 보장됩니다.-->
 
 </div>
 
@@ -834,23 +771,13 @@ $$d = \Delta w\,\hat{e}_x \;\text{ on } \Gamma_m, \qquad d = 0 \;\text{ on } \pa
 막에 가까울수록 강성 $k$를 크게 설정하여 좁은 격자의 뒤틀림을 방지합니다:
 
 $$k = \frac{1}{(|x - x_m| + \delta)^3}$$
-```
-파이프 x방향 강성 분포:
 
-입구                막(3.75)               출구
-0  ──[유연]──────[뻣뻣]──────[유연]──── 5
-                    ↑
-              k 최대 (격자 거의 안 움직임)
-```
-
-| 위치 | $k$ | 격자 거동 |
-|---|---|---|
-| 막 바로 옆 | ~400 | 거의 안 움직임 |
-| 막에서 0.5m | ~3.3 | 약간 이동 |
-| 막에서 2m | ~0.2 | 크게 이동 가능 |
-
-<div class="mt-2 p-2 bg-red-900 bg-opacity-20 rounded text-xs">
-⚠️ 격자가 뒤틀리면 야코비안이 음수 → 행렬 특이 → 계산 붕괴 (직접 경험)
+<div class="w-full flex flex-col items-center mt-2">
+  <img src="./images/ALE_compare.png"
+    class="w-full max-h-[200px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">
+    (a): 초기 FEM , (b): ALE 변형
+  </div>
 </div>
 
 </div>
@@ -877,10 +804,7 @@ highlighter: shiki
 $$-T\Delta_\Gamma w = [\![p]\!] = p^- - p^+$$
 
 경계 조건: $w = 0$ on $\partial\Gamma_m$ (막 테두리 고정단)
-
-약형:
-
-$$T\int_{\Gamma_m} \nabla w \cdot \nabla v \, dA = \int_{\Gamma_m} [\![p]\!] \cdot v \, dA$$
+$$(약형): T\int_{\Gamma_m} \nabla w \cdot \nabla v \, dA = \int_{\Gamma_m} [\![p]\!] \cdot v \, dA$$ 
 
 ### 🔹 압력 점프 $[\![p]\!]$ 계산 방법
 
@@ -944,13 +868,9 @@ $$\mathbf{n} = \frac{1}{\sqrt{1 + \left(\frac{\partial w}{\partial y}\right)^2 +
 
 $$\text{minimize} \sum_j \left|\Delta w_j - \frac{\partial w}{\partial y}\Delta y_j - \frac{\partial w}{\partial z}\Delta z_j\right|^2$$
 
-2×2 정규 방정식:
-
-$$\underbrace{\begin{pmatrix} \sum \Delta y^2 & \sum \Delta y\Delta z \\ \sum \Delta y\Delta z & \sum \Delta z^2 \end{pmatrix}}_{A^TA} \begin{pmatrix} \partial w/\partial y \\ \partial w/\partial z \end{pmatrix} = \underbrace{\begin{pmatrix} \sum \Delta w\Delta y \\ \sum \Delta w\Delta z \end{pmatrix}}_{A^Tb}$$
-
 ### 🔹 r 대칭 가정과의 차이
 
-| | r 대칭 가정 (기존) | 최소자승법 (수정) |
+| | r 대칭 가정 | 최소자승법 |
 |---|---|---|
 | 비대칭 변형 | ❌ 오차 발생 | ✅ 정확 |
 | r=0 특이점 | ❌ 0 나누기 | ✅ 없음 |
@@ -1086,7 +1006,542 @@ ALE + Darcy 통합 코드
     </button>
   </div>
 ```python {all} twoslash
-  # 코드를 여기에 붙여넣으세요
+"""
+FSI: ALE Navier-Stokes + Poisson Membrane + Darcy Permeation
+수정사항:
+  1. NS 행렬 A1,A2,A3 매 스텝 재조립
+  2. sub_m.geometry.x를 msh와 매 스텝 동기화
+  3. pressure_jump를 현재 막 위치 기반 동적 샘플링으로 수정
+"""
+
+import numpy as np
+import gmsh
+from mpi4py import MPI
+from petsc4py import PETSc
+from pathlib import Path
+from scipy.spatial import cKDTree
+
+from dolfinx import io
+from dolfinx.mesh import create_submesh
+from dolfinx.fem import (
+    Constant, Function, functionspace, form,
+    dirichletbc, locate_dofs_topological, locate_dofs_geometrical,
+)
+from dolfinx.fem.petsc import (
+    assemble_matrix, assemble_vector, apply_lifting, create_vector, set_bc, create_matrix
+)
+from dolfinx.io import VTXWriter
+from dolfinx.geometry import bb_tree, compute_collisions_points, compute_colliding_cells
+from basix.ufl import element as belem
+from ufl import (
+    Identity, TestFunction, TrialFunction, FacetNormal,
+    div, dot, dx, inner, lhs, nabla_grad, rhs, sym,
+    avg, Measure, grad, SpatialCoordinate
+)
+
+# ═══════════════════════════════════════════════════════════════
+# § 0. Parameters
+# ═══════════════════════════════════════════════════════════════
+L, R, x_m  = 5.0, 0.5, 3.75
+T_sim, N   = 2.0, 2000
+dt         = T_sim / N
+
+rho_v      = 1.0
+mu_v       = 0.01
+kappa_v    = 5e-3
+T_mem      = 25.0
+u_max      = 10.0
+DK         = mu_v / kappa_v        # μ/κ: Darcy 저항 계수 (물리량)
+mem_lc = 0.04   # 막 메시 크기 (법선 계산 이웃 탐색 반경용)
+
+
+# 압력 샘플링 오프셋 (초기 메시 크기의 절반 수준 — 동적으로 재계산됨)
+EPS_BASE   = 0.03
+
+# ═══════════════════════════════════════════════════════════════
+# § 1. Mesh
+# ═══════════════════════════════════════════════════════════════
+gmsh.initialize()
+gmsh.model.add("fsi")
+if MPI.COMM_WORLD.rank == 0:
+    c1 = gmsh.model.occ.addCylinder(0,   0, 0, x_m,     0, 0, R)
+    c2 = gmsh.model.occ.addCylinder(x_m, 0, 0, L - x_m, 0, 0, R)
+    dk = gmsh.model.occ.addDisk(x_m, 0, 0, R, R)
+    gmsh.model.occ.rotate([(2, dk)], x_m, 0, 0, 0, 1, 0, np.pi / 2)
+    out_tags, out_map = gmsh.model.occ.fragment(
+        [(3, c1), (3, c2)], [(2, dk)]
+    )
+    gmsh.model.occ.synchronize()
+
+    mem_surfs = [t for d, t in out_map[2] if d == 2]
+    vol_tags  = [t for d, t in out_tags   if d == 3]
+    bnd       = gmsh.model.getBoundary(
+        [(3, t) for t in vol_tags], oriented=False, combined=True
+    )
+    In, Out, Wall = [], [], []
+    for d, tag in bnd:
+        if d != 2 or tag in mem_surfs: continue
+        cx = gmsh.model.occ.getCenterOfMass(d, tag)[0]
+        if   np.isclose(cx, 0., atol=.15): In.append(tag)
+        elif np.isclose(cx, L,  atol=.15): Out.append(tag)
+        else:                               Wall.append(tag)
+
+    gmsh.model.addPhysicalGroup(3, vol_tags,  tag=1, name="fluid")
+    gmsh.model.addPhysicalGroup(2, In,        tag=1, name="inlet")
+    gmsh.model.addPhysicalGroup(2, Out,       tag=2, name="outlet")
+    gmsh.model.addPhysicalGroup(2, Wall,      tag=3, name="wall")
+    gmsh.model.addPhysicalGroup(2, mem_surfs, tag=4, name="membrane")
+
+    gmsh.option.setNumber("Mesh.MeshSizeMax", 0.12)
+    gmsh.option.setNumber("Mesh.MeshSizeMin", 0.025)
+    gmsh.option.setNumber("Mesh.Algorithm3D", 4)
+    gmsh.model.mesh.generate(3)
+    gmsh.model.mesh.optimize("Netgen")
+
+gdata       = io.gmsh.model_to_mesh(gmsh.model, MPI.COMM_WORLD, 0, gdim=3)
+msh, ct, ft = gdata.mesh, gdata.cell_tags, gdata.facet_tags
+gmsh.finalize()
+
+gdim = msh.geometry.dim
+
+# ═══════════════════════════════════════════════════════════════
+# § 2. Membrane 2D submesh
+#   vmap_m: sub_m geometry node → msh geometry node  (FIX 2)
+# ═══════════════════════════════════════════════════════════════
+# 🌟 FIX: 4번째 반환값인 geom_map을 받고, numpy 정수형 배열로 명시적 변환
+sub_m, emap_m, vmap_m, geom_map_raw = create_submesh(
+    msh, msh.topology.dim - 1, ft.find(4)
+)
+geom_map = np.array(geom_map_raw, dtype=np.int32)
+# vmap_m[i] = index in msh.geometry.x corresponding to sub_m node i
+# → 매 스텝 sub_m.geometry.x[i] = msh.geometry.x[vmap_m[i]]
+
+# ═══════════════════════════════════════════════════════════════
+# § 3. Function spaces
+# ═══════════════════════════════════════════════════════════════
+V_f   = functionspace(msh,   belem("Lagrange", msh.basix_cell(),   2, shape=(gdim,)))
+Q_f   = functionspace(msh,   belem("Lagrange", msh.basix_cell(),   1))
+V_ale = functionspace(msh,   belem("Lagrange", msh.basix_cell(),   1, shape=(gdim,)))
+W_m   = functionspace(sub_m, ("Lagrange", 1))
+
+# ═══════════════════════════════════════════════════════════════
+# § 4. Integration measures
+# ═══════════════════════════════════════════════════════════════
+dxf  = Measure("dx", domain=msh,   subdomain_data=ct)
+dS_m = Measure("dS", domain=msh,   subdomain_data=ft, subdomain_id=4)
+dxm  = Measure("dx", domain=sub_m)
+n    = FacetNormal(msh)   # dS_m (interior) 에서 사용 → 합법
+
+# ═══════════════════════════════════════════════════════════════
+# § 5. Boundary conditions
+# ═══════════════════════════════════════════════════════════════
+fdim = msh.topology.dim - 1
+
+class InletVelocity:
+    def __init__(self): self.t = 0.0
+    def __call__(self, x):
+        v    = np.zeros((gdim, x.shape[1]), dtype=PETSc.ScalarType)
+        r2   = x[1]**2 + x[2]**2
+        v[0] = (u_max
+                * np.sin(np.pi * self.t / (T_sim * 2))
+                * np.maximum(1 - r2 / R**2, 0.))
+        return v
+
+iv   = InletVelocity()
+u_in = Function(V_f)
+u_in.interpolate(iv)
+
+bcu = [
+    dirichletbc(u_in,
+        locate_dofs_topological(V_f, fdim, ft.find(1))),
+    dirichletbc(np.zeros(gdim, dtype=PETSc.ScalarType),
+        locate_dofs_topological(V_f, fdim, ft.find(3)), V_f),
+]
+bcp = [
+    dirichletbc(Constant(msh, PETSc.ScalarType(0.)),
+        locate_dofs_topological(Q_f, fdim, ft.find(2)), Q_f),
+]
+bc_wm = dirichletbc(
+    PETSc.ScalarType(0.),
+    locate_dofs_geometrical(
+        W_m, lambda x: np.isclose(np.sqrt(x[1]**2 + x[2]**2), R, atol=2e-2)
+    ), W_m
+)
+bc_ale_fixed = dirichletbc(
+    np.zeros(gdim, dtype=PETSc.ScalarType),
+    locate_dofs_geometrical(V_ale, lambda x: (
+        np.isclose(x[0], 0., atol=.05) |
+        np.isclose(x[0], L,  atol=.05) |
+        np.isclose(np.sqrt(x[1]**2 + x[2]**2), R, atol=.05)
+    )), V_ale
+)
+
+# ═══════════════════════════════════════════════════════════════
+# § 6. UFL weak forms  (계수는 고정, 행렬은 루프에서 재조립)
+# ═══════════════════════════════════════════════════════════════
+def eps_(u): return sym(nabla_grad(u))
+def sig_(u, p): return 2 * mu_v * eps_(u) - p * Identity(gdim)
+
+u_t, vf  = TrialFunction(V_f),  TestFunction(V_f)
+p_t, qf  = TrialFunction(Q_f),  TestFunction(Q_f)
+u_n, p_n = Function(V_f), Function(Q_f)
+u_,  p_  = Function(V_f), Function(Q_f)
+u_.name, p_.name = "Velocity", "Pressure"
+
+w_msh = Function(V_f)          # ALE mesh velocity
+U     = 0.5 * (u_n + u_t)     # Crank-Nicolson
+
+# NS Step 1: momentum + Darcy surface resistance
+F1 = (
+    rho_v / dt * inner(u_t - u_n, vf) * dxf
+  + rho_v * inner(dot(u_n - w_msh, nabla_grad(u_n)), vf) * dxf
+  + inner(sig_(U, p_n), eps_(vf)) * dxf
+  + DK * dot(avg(U), n("+")) * dot(avg(vf), n("+")) * dS_m
+)
+a1_ufl = form(lhs(F1))
+L1_ufl = form(rhs(F1))
+
+# NS Step 2: pressure Poisson
+a2_ufl = form(dot(nabla_grad(p_t), nabla_grad(qf)) * dxf)
+L2_ufl = form(dot(nabla_grad(p_n), nabla_grad(qf)) * dxf
+            - rho_v / dt * div(u_) * qf * dxf)
+
+# NS Step 3: velocity correction
+a3_ufl = form(rho_v * dot(u_t, vf) * dxf)
+L3_ufl = form(rho_v * dot(u_, vf) * dxf
+            - dt * dot(nabla_grad(p_ - p_n), vf) * dxf)
+
+# Membrane Poisson: -T Δ_Γ w = [[p]]
+w_t2, vm = TrialFunction(W_m), TestFunction(W_m)
+w_,  w_pr = Function(W_m), Function(W_m)
+w_.name   = "Deflection"
+pj_fn     = Function(W_m)
+a_m_ufl   = form(T_mem * inner(grad(w_t2), grad(vm)) * dxm)
+L_m_ufl   = form(pj_fn * vm * dxm)
+
+# ALE extension with Variable Stiffness (메시 꼬임 방지)
+d_t3, e3  = TrialFunction(V_ale), TestFunction(V_ale)
+d_ale     = Function(V_ale); d_ale.name = "ALE_disp"
+d_mem_fn  = Function(V_ale)
+x_f = SpatialCoordinate(msh)
+# 🌟 막(mem_pos = 3.75)에 가까울수록 강성이 급격히 커지는 가중치 함수
+dist_to_mem = abs(x_f[0] - x_m)
+# 분모에 0.05 정도의 오프셋을 줘서 0으로 나누어지는 것을 방지
+mesh_stiffness = 1.0 / (dist_to_mem + 0.05)**3 # 차수를 높일수록 엄격히 방지
+
+# 강성이 포함된 새로운 약형식: -∇·(k ∇d) = 0
+a_ale_ufl = form(mesh_stiffness * inner(nabla_grad(d_t3), nabla_grad(e3)) * dxf)
+L_ale_ufl = form(inner(Constant(msh, PETSc.ScalarType((0., 0., 0.))), e3) * dxf)
+
+# ═══════════════════════════════════════════════════════════════
+# § 7. KSP factory
+# ═══════════════════════════════════════════════════════════════
+PETSc.Options()["ksp_error_if_not_converged"] = False
+
+def make_ksp(A, ktype, pctype, comm):
+    s = PETSc.KSP().create(comm)
+    s.setOperators(A)
+    s.setType(ktype)
+    s.getPC().setType(pctype)
+    s.setTolerances(rtol=1e-7, max_it=800)
+    s.setFromOptions()
+    return s
+
+# ═══════════════════════════════════════════════════════════════
+# § 8. DOF / geometry mappings  (one-time setup)
+# ═══════════════════════════════════════════════════════════════
+ale_coords   = V_ale.tabulate_dof_coordinates()   # (N_ale, 3)
+mem_dof_c    = W_m.tabulate_dof_coordinates()     # (N_mem, 3)  초기 막 DOF 좌표
+
+# W_m DOF → V_ale DOF  (for ALE BC from membrane displacement)
+tree_ale        = cKDTree(ale_coords)
+dist_ma, idx_ma = tree_ale.query(mem_dof_c)
+valid_ma        = dist_ma < 1e-8
+ale_bs          = V_ale.dofmap.index_map_bs         # block size = 3
+
+# V_ale geometry node → msh geometry node
+#  (ALE에서 메시 이동 후 역방향 동기화용)
+#  geo_orig: 초기 3D geometry 좌표
+geo_orig = msh.geometry.x.copy()                   # (N_geo, 3)
+tree_geo      = cKDTree(geo_orig)
+dist_ag, idx_ag = tree_geo.query(ale_coords)
+valid_ag        = dist_ag < 1e-8                    # ale DOF → geo node
+
+mem_ale_dofs = locate_dofs_topological(V_ale, fdim, ft.find(4))
+
+# ═══════════════════════════════════════════════════════════════
+# § 9. Dynamic pressure jump  (FIX 3)
+#
+#   기존: 고정 x_m ± ε  → 막이 ε 이상 변위 시 같은 쪽 샘플링
+#   수정: 현재 막 DOF 좌표(변위 반영) 기준으로 샘플링
+#         EPS = EPS_BASE  (고정) → 막 변위가 EPS보다 작도록
+#         dt 조정 또는 EPS를 max_deflection 기반으로 동적 설정
+# ═══════════════════════════════════════════════════════════════-
+def pressure_jump_dynamic(p_fn, w_arr, mem_dof_coords_init,
+                           gtree_current, eps=EPS_BASE):
+    """
+    변형된 막의 법선 방향으로 압력 샘플링.
+    
+    법선 벡터 유도:
+      막 표면: (x_m + w(r), y, z)
+      T_y = (dw/dr * y/r, 1, 0)
+      T_z = (dw/dr * z/r, 0, 1)
+      n   = T_y × T_z = (1, -dw/dr*y/r, -dw/dr*z/r) / |n|
+    """
+    n_pts    = len(mem_dof_coords_init)
+    p_minus  = np.zeros(n_pts)
+    p_plus   = np.zeros(n_pts)
+
+    current_x = mem_dof_coords_init[:, 0] + w_arr
+    y_c       = mem_dof_coords_init[:, 1]
+    z_c       = mem_dof_coords_init[:, 2]
+    r_c       = np.sqrt(y_c**2 + z_c**2)
+
+    max_w   = np.max(np.abs(w_arr)) if w_arr.size > 0 else 0.
+    eps_dyn = max(eps, max_w * 1.5 + 1e-4)
+
+    # ── 법선 벡터 계산: dw/dr 수치 근사 ──────────────────────
+    # 각 DOF에서 반경 방향 이웃 DOF를 찾아 유한차분
+    dw_dr = np.zeros(n_pts)
+    search_radius = 3.0 * mem_lc   # 이웃 탐색 반경
+
+    for i in range(n_pts):
+        ri = r_c[i]
+        if ri < 1e-10:
+            # 중심점: 축대칭이므로 dw/dr = 0
+            dw_dr[i] = 0.0
+            continue
+
+        dr_all = np.abs(r_c - ri)
+        dr_all[i] = np.inf   # 자기 자신 제외
+        nbrs = np.where(dr_all < search_radius)[0]
+
+        if len(nbrs) == 0:
+            dw_dr[i] = 0.0
+            continue
+
+        # 반경 차이로 가중 유한차분
+        dr_vals = r_c[nbrs] - ri
+        dw_vals = w_arr[nbrs] - w_arr[i]
+        valid   = np.abs(dr_vals) > 1e-12
+        if valid.any():
+            # 거리 역가중 평균
+            weights      = 1.0 / (np.abs(dr_vals[valid]) + 1e-14)
+            dw_dr[i]     = np.sum(weights * dw_vals[valid] / dr_vals[valid]) \
+                           / np.sum(weights)
+
+    # 법선 벡터 (x, y, z 성분)
+    # n = (1, -dw/dr * y/r, -dw/dr * z/r) / |n|
+    safe_r = np.where(r_c > 1e-10, r_c, 1.0)   # 0 나누기 방지
+
+    nx = np.ones(n_pts)
+    ny = np.where(r_c > 1e-10, -dw_dr * y_c / safe_r, 0.0)
+    nz = np.where(r_c > 1e-10, -dw_dr * z_c / safe_r, 0.0)
+
+    n_mag = np.sqrt(nx**2 + ny**2 + nz**2)
+    nx /= n_mag;  ny /= n_mag;  nz /= n_mag
+
+    # ── 법선 방향으로 샘플링 포인트 생성 ─────────────────────
+    for sign, arr in [(-1, p_minus), (+1, p_plus)]:
+        pts = np.column_stack([
+            current_x + sign * eps_dyn * nx,   # x: 변위 + 법선 x성분
+            y_c       + sign * eps_dyn * ny,   # y: 법선 y성분
+            z_c       + sign * eps_dyn * nz,   # z: 법선 z성분
+        ])
+
+        # 반경 방향 clamp (파이프 내부 유지)
+        r   = np.sqrt(pts[:, 1]**2 + pts[:, 2]**2)
+        out = r > R * 0.92
+        pts[out, 1] *= R * 0.92 / r[out]
+        pts[out, 2] *= R * 0.92 / r[out]
+        pts[:, 0]   = np.clip(pts[:, 0], 0.01, L - 0.01)
+
+        coll            = compute_collisions_points(gtree_current, pts)
+        colliding_cells = compute_colliding_cells(msh, coll, pts)
+
+        cells = np.full(n_pts, -1, dtype=np.int32)
+        found = np.zeros(n_pts, dtype=np.float64)
+
+        for i in range(n_pts):
+            links = colliding_cells.links(i)
+            if len(links) > 0:
+                cells[i] = links[0]
+                found[i] = 1.0
+
+        ok = cells >= 0
+        if ok.any():
+            pts_ok = pts[ok].reshape(-1, 3)
+            vals   = p_fn.eval(pts_ok, cells[ok])
+            arr[ok] = vals.reshape(-1)
+
+    # ── MPI reduction ─────────────────────────────────────────
+    found_global   = np.zeros(n_pts, dtype=np.float64)
+    p_minus_global = np.zeros_like(p_minus)
+    p_plus_global  = np.zeros_like(p_plus)
+
+    msh.comm.Allreduce(found,   found_global,   op=MPI.SUM)
+    msh.comm.Allreduce(p_minus, p_minus_global, op=MPI.SUM)
+    msh.comm.Allreduce(p_plus,  p_plus_global,  op=MPI.SUM)
+
+    denom = np.maximum(found_global, 1.0)
+    p_minus_global /= denom
+    p_plus_global  /= denom
+
+    return p_minus_global - p_plus_global
+
+# ═══════════════════════════════════════════════════════════════
+# § 10. One-step solve helper
+# ═══════════════════════════════════════════════════════════════
+def ksp_solve(solver, b_vec, x_fn, L_f, a_f=None, bcs=None):
+    with b_vec.localForm() as loc: loc.set(0)
+    assemble_vector(b_vec, L_f)
+    if a_f and bcs:
+        apply_lifting(b_vec, [a_f], [bcs])
+    b_vec.ghostUpdate(addv=PETSc.InsertMode.ADD_VALUES,
+                      mode=PETSc.ScatterMode.REVERSE)
+    if bcs:
+        set_bc(b_vec, bcs)
+    solver.solve(b_vec, x_fn.x.petsc_vec)
+    x_fn.x.scatter_forward()
+
+# ═══════════════════════════════════════════════════════════════
+# § 11. Output
+# ═══════════════════════════════════════════════════════════════
+Path("results").mkdir(exist_ok=True, parents=True)
+vtx_u = VTXWriter(msh.comm,   "results/u.bp",   u_,    engine="BP4")
+vtx_p = VTXWriter(msh.comm,   "results/p.bp",   p_,    engine="BP4")
+vtx_w = VTXWriter(sub_m.comm, "results/w.bp",   w_,    engine="BP4")
+vtx_d = VTXWriter(msh.comm,   "results/d.bp",   d_ale, engine="BP4")
+
+for fn in [u_, u_n, p_, p_n, w_, w_pr, d_ale, w_msh]:
+    fn.x.array[:] = 0.
+
+# ═══════════════════════════════════════════════════════════════
+# § 12. Time loop
+# 🌟 메모리 누수 방지: 루프 외부에서 빈 껍데기 객체 1회 생성
+# ═══════════════════════════════════════════════════════════════
+A1 = create_matrix(a1_ufl)
+A2 = create_matrix(a2_ufl)
+A3 = create_matrix(a3_ufl)
+A_m = create_matrix(a_m_ufl)
+A_a = create_matrix(a_ale_ufl)
+
+b1, b2, b3 = create_vector(V_f), create_vector(Q_f), create_vector(V_f)
+b_m = create_vector(W_m)
+b_a = create_vector(V_ale)
+
+s1 = make_ksp(A1, "bcgs", "bjacobi",   msh.comm) # 병렬환경이면 bjacobi 아니면 ilu
+s2 = make_ksp(A2, "cg",   "hypre", msh.comm)
+s3 = make_ksp(A3, "cg",   "jacobi",   msh.comm) # 병렬환경이면 jacobi 아니면 sor
+s_m = make_ksp(A_m, "cg", "hypre", sub_m.comm)
+s_a = make_ksp(A_a, "cg", "hypre", msh.comm)
+
+gtree = bb_tree(msh, msh.topology.dim)
+t = 0.0
+
+for step in range(N):
+    t += dt
+
+    # ── 0. Inlet velocity update ────────────────────────────
+    iv.t = t
+    u_in.interpolate(iv)
+
+    # ════════════════════════════════════════════════════════
+    # FIX 1: 매 스텝 NS 행렬 재조립
+    #   메시 좌표가 바뀌었으므로 dx, FacetNormal 모두 다시 계산
+    # ════════════════════════════════════════════════════════
+    A1.zeroEntries(); assemble_matrix(A1, a1_ufl, bcs=bcu); A1.assemble()
+    s1.setOperators(A1)  # 🌟 솔버에 행렬 갱신 알림
+
+    A2.zeroEntries(); assemble_matrix(A2, a2_ufl, bcs=bcp); A2.assemble()
+    s2.setOperators(A2)  # 🌟 솔버에 행렬 갱신 알림
+
+    A3.zeroEntries(); assemble_matrix(A3, a3_ufl);          A3.assemble()
+    s3.setOperators(A3)  # 🌟 솔버에 행렬 갱신 알림
+
+    # ── 1. NS Step 1: intermediate velocity ─────────────────
+    ksp_solve(s1, b1, u_, L1_ufl, a1_ufl, bcu)
+
+    # ── 2. NS Step 2: pressure Poisson ──────────────────────
+    ksp_solve(s2, b2, p_, L2_ufl, a2_ufl, bcp)
+
+    # ── 3. NS Step 3: velocity correction ───────────────────
+    ksp_solve(s3, b3, u_, L3_ufl)
+    u_n.x.array[:] = u_.x.array[:]
+    p_n.x.array[:] = p_.x.array[:]
+
+    # ════════════════════════════════════════════════════════
+    # FIX 3: 동적 압력 점프 (현재 막 변위 기반)
+    # ════════════════════════════════════════════════════════
+    pj_fn.x.array[:] = pressure_jump_dynamic(
+        p_, w_.x.array, mem_dof_c, gtree
+    )
+
+    # ── 4. Membrane Poisson (매 스텝 재조립: sub_m 좌표 변함)
+    A_m.zeroEntries(); assemble_matrix(A_m, a_m_ufl, bcs=[bc_wm]); A_m.assemble()
+    s_m.setOperators(A_m)
+    ksp_solve(s_m, b_m, w_, L_m_ufl, a_m_ufl, [bc_wm])
+
+    # ── 5. ALE harmonic extension ────────────────────────────
+    dw = w_.x.array - w_pr.x.array              # 증분 변위
+
+    d_mem_fn.x.array[:] = 0.
+    ok = np.where(valid_ma)[0]
+    d_mem_fn.x.array[idx_ma[ok] * ale_bs + 0] = dw[ok]
+    d_mem_fn.x.scatter_forward()
+
+    bc_ale_dyn  = dirichletbc(d_mem_fn, mem_ale_dofs)
+    bcs_ale     = [bc_ale_fixed, bc_ale_dyn]
+
+    A_a.zeroEntries(); assemble_matrix(A_a, a_ale_ufl, bcs=bcs_ale); A_a.assemble()
+    s_a.setOperators(A_a)
+    ksp_solve(s_a, b_a, d_ale, L_ale_ufl, a_ale_ufl, bcs_ale)
+
+    # ════════════════════════════════════════════════════════
+    # FIX 2: msh + sub_m 동기화 (증분 업데이트)
+    #   d_ale: (N_ale_dofs, 3) 증분 변위
+    #   msh.geometry.x: (N_geo, 3)
+    #   sub_m.geometry.x[i] = msh.geometry.x[vmap_m[i]]
+    # ════════════════════════════════════════════════════════
+    d_inc = d_ale.x.array.reshape(-1, ale_bs)   # (N_ale_dofs, 3)
+
+    # 3D 메시 좌표 업데이트 (ALE DOF → geometry node)
+    if valid_ag.any():
+        msh.geometry.x[idx_ag[valid_ag]] += d_inc[valid_ag]
+
+    # 2D submesh 좌표를 3D 메시에서 동기화
+    # vmap_m[i]: sub_m의 i번 geometry 노드 = msh의 vmap_m[i]번 노드
+    # 2D submesh 좌표를 3D 메시에서 동기화
+    sub_m.geometry.x[:] = msh.geometry.x[geom_map]
+
+    # ── 6. ALE mesh velocity: w_mesh = Δd/Δt ────────────────
+    w_msh.interpolate(d_ale)
+    w_msh.x.array[:] /= dt
+
+    # ── 7. bb_tree 갱신 (메시 이동 후 필수) ─────────────────
+    gtree = bb_tree(msh, msh.topology.dim)
+
+    # ── 8. Store w for next increment ───────────────────────
+    w_pr.x.array[:] = w_.x.array[:]
+
+    # ── 9. Output ────────────────────────────────────────────
+    if step % 10 == 0:
+        vtx_u.write(t); vtx_p.write(t)
+        vtx_w.write(t); vtx_d.write(t)
+
+    if step % 50 == 0 and msh.comm.rank == 0:
+        max_w  = np.max(np.abs(w_.x.array))
+        max_u  = np.max(np.abs(u_.x.array))
+        max_pj = np.max(np.abs(pj_fn.x.array))
+        print(f"t={t:.4f}s | "
+              f"max_w={max_w:.3e}  "
+              f"max_u={max_u:.3e}  "
+              f"max_pj={max_pj:.3e}  "
+              f"max_d={np.max(np.abs(d_ale.x.array)):.3e}")
+
+vtx_u.close(); vtx_p.close(); vtx_w.close(); vtx_d.close()
+
+
 ```
 
 </div>
@@ -1097,21 +1552,22 @@ class: text-center
 highlighter: shiki
 ---
 
-# 11. 시뮬레이션 결과 분석
+# 11-1. 시뮬레이션 결과 분석
 
-<div class="text-xl opacity-80 mb-6">속도장 · 압력장 · 막 변위 비교</div>
+<div class="text-xl opacity-80 mb-6">속도장 · 압력장 비교</div>
 
 <div grid="~ cols-2 gap-8" class="text-left text-sm">
 
 <div v-click>
 
-### 🔹 속도장 (Velocity Field)
+### 🔹 속도(Velocity)
 
 <div class="w-full flex flex-col items-center mt-2">
-  <img src="./images/image1.png"
-    class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <video controls autoplay loop muted width="100%" class="rounded shadow-lg">
+    <source src="./video/Darcy-velocity.mp4" type="video/mp4">
+  </video>
   <div class="text-xs opacity-70 mt-1">
-    막 위치($x=3.75$)에서 속도 감소 확인
+    막 위치에서 압력차 증가에 따른 속도 증가 확인
   </div>
 </div>
 
@@ -1119,14 +1575,14 @@ highlighter: shiki
 
 <div v-click>
 
-### 🔹 압력장 비교
+### 🔹 압력(Pressure)
 
 <div class="w-full flex flex-col items-center mt-2">
-  <img src="./images/image1.png"
-    class="w-full max-h-[160px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <video controls autoplay loop muted width="100%" class="rounded shadow-lg">
+    <source src="./video/Darcy-pressure.mp4" type="video/mp4">
+  </video>
   <div class="text-xs opacity-70 mt-1">
-    초기 Brinkman (좌): 압력 강하 없음 ❌ /
-    Darcy 표면항 (우): 압력 점프 재현 ✅
+    Darcy 표면항: 압력 점프 재현
   </div>
 </div>
 
@@ -1139,21 +1595,23 @@ class: text-center
 highlighter: shiki
 ---
 
-# 11-1. 막 변위 결과
+# 11. 시뮬레이션 결과
 
-<div class="text-xl opacity-80 mb-6">압력 하중에 의한 탄성막 변형</div>
+<div class="text-xl opacity-80 mb-6">압력 하중에 의한 탄성막 반력 및 ALE 메시 변형</div>
 
 <div grid="~ cols-2 gap-8" class="text-left text-sm">
 
 <div v-click>
 
-### 🔹 막 변위 분포
+### 🔹 막 반력(deflection) 분포
 
 <div class="w-full flex flex-col items-center mt-2">
-  <img src="./images/image1.png"
-    class="w-full max-h-[180px] object-contain rounded shadow-sm border border-gray-200/50" />
+  
+  <video controls autoplay loop muted width="100%" class="rounded shadow-lg">
+    <source src="./video/Darcy-deflection.mp4" type="video/mp4">
+  </video>
   <div class="text-xs opacity-70 mt-1">
-    시간에 따른 막 변위 $w(r,t)$ — 중심부 최대 변위 발생
+    시간에 따른 막의 반력 분포
   </div>
 </div>
 
@@ -1164,10 +1622,12 @@ highlighter: shiki
 ### 🔹 ALE 메시 변형
 
 <div class="w-full flex flex-col items-center mt-2">
-  <img src="./images/image1.png"
-    class="w-full max-h-[180px] object-contain rounded shadow-sm border border-gray-200/50" />
+  
+  <video controls autoplay loop muted width="100%" class="rounded shadow-lg">
+    <source src="./video/Darcy-ALE.mp4" type="video/mp4">
+  </video>
   <div class="text-xs opacity-70 mt-1">
-    막 변위에 따른 유체 메시 변형 (조화 확장)
+    막 변위에 따른 유체 메시 변형
   </div>
 </div>
 
@@ -1194,9 +1654,10 @@ Q_f = functionspace(msh, belem("Lagrange", ..., 1))
 # CG1: 연속 공간 → 진짜 불연속 점프 표현 불가
 ```
 
-- CG1은 메시 전체에서 압력이 연속적으로 이어져야 함
-- 진짜 압력 불연속 표현: DG 압력 공간 필요
-- 현재: 막 인근 요소에 걸쳐 **스미어된(Smeared) 압력 점프** 발생
+* 함수공간이 1차로 정의되어있기에 탄성막 사이의 불연속한 압력 분포를 표현하기 힘듬.
+* 현재: 막 인근 요소에 걸쳐 **스미어된(Smeared) 압력 점프** 발생
+
+<br>
 
 ### 🔹 한계 2: 1차 명시적 대류
 ```python
@@ -1207,7 +1668,7 @@ rho_v * inner(
 # but: u_{n-1} 저장 필요 → 구현 복잡도 증가
 ```
 
-고유속에서 수치적 불안정 가능성 존재
+유속이 빠를 때 수치적 불안정 가능성 존재
 
 </div>
 
@@ -1223,115 +1684,101 @@ rho_v * inner(
 
 ### 🔹 한계 요약 및 대응
 
+<div style="background-color:rgb(210,215,250">
+
 | 한계 | 현재 근사 | 영향 | 대응 |
 |---|---|---|---|
 | CG1 압력 | 스미어된 점프 | 정량 오차 | DG 공간 |
 | 1차 대류 | Forward Euler | 안정성 | AB 2차 |
 | 명시적 결합 | $O(\Delta t)$ 오차 | 결합 정확도 | Picard |
-| 법선 샘플링 | 최소자승 근사 | 샘플링 오차 | dS 약형 |
-
-<div class="mt-2 p-2 bg-blue-900 bg-opacity-20 rounded border border-blue-500 border-opacity-30 text-xs">
-✅ 위 한계들은 알고 사용하는 근사이며 논문에 명시합니다.
-</div>
 
 </div>
 </div>
-
+</div>
 ---
 theme: seriph
 class: text-center
 highlighter: shiki
 ---
 
-# 13. 향후 연구 방향
+# 13. 앞으로 해야 할 것들
 
-<div class="text-xl opacity-80 mb-6">케이크층 모델링 및 개선 방향</div>
+<div class="text-xl opacity-80 mb-6">알고 사용하는 근사들</div>
 
 <div grid="~ cols-2 gap-8" class="text-left text-sm">
 
 <div v-click>
 
-### 🔹 케이크층(Cake Layer) LVPP 적용
+### 🔹 1: 장애물 모양 및 위치, 특성 결정
 
-MBR 공정에서 슬러리 입자가 막 표면에 쌓여 케이크층을 형성합니다.
+<br>
 
-$$\frac{\partial c}{\partial t} = \underbrace{k_{dep} \cdot J_n}_{\text{퇴적}} - \underbrace{k_{ero} \cdot \tau_w}_{\text{침식}}, \quad c \geq 0$$
+* 막 중심에 놓는 경우
+* 막 중심에서 벗어나게 놓는 경우
+* 막과 흡착하는 성질을 지닌 경우
+* 유동에 따라 막 위에서 움직이는 경우
+* 짧은 원기둥 모양
+* 비정형 모양
 
-- $c$: 케이크층 두께
-- $J_n = u \cdot n$: 막 법선 방향 유량 (퇴적 구동력)
-- $\tau_w$: 전단 응력 (침식 구동력)
-- $c \geq 0$: 자연스러운 부등식 제약 → **LVPP의 정확한 적용 대상**
-```
-막(Mesh로 표현) + 케이크층(LVPP로 표현)
+<br>
 
-→ 두 방법의 역할 분담이 물리적으로 올바름
-→ 막: 위치가 명확 → 경계 조건
-→ 케이크층: 위치 미지, 성장 → LVPP
-```
+### 🔹 2: LVPP 적용
+
+<br>
+
+* obstacle problem의 LVPP 코드를 분석 후 위 코드에 적용.
 
 </div>
 
 <div v-click>
 
-### 🔹 수치 정확도 개선
+### 🔹 3: On/Off 스위치 코드 작성 및 실행
 
-| 개선 항목 | 현재 | 목표 |
-|---|---|---|
-| 압력 공간 | CG1 | DG0/DG1 |
-| 대류 이산화 | Forward Euler | Adams-Bashforth 2차 |
-| 결합 방식 | 명시적 | Picard 반복 |
+<br>
 
-### 🔹 현재 시뮬레이션의 의미
-```
-BioWin (상용, 거시):
-  공정 전체 성능 예측
-         ↕ 상호 보완
-FEniCSx (본 연구, 미시):
-  막 내부 국소 압력·속도·변위
-  케이크층 성장 동역학 (향후)
-```
+* 볼 밸브 및 게이트 밸브 등 밸브 종류 결정
+* 밸브 종류에 따른 매쉬 모양 결정
 
-향후 공정 장치 설계 및 운전 최적화에 활용될 수 있는 **수치해석적 근거**를 제시합니다.
+<br>
+
+### 🔹 4. 예상되는 결과
+
+<div class="w-full flex flex-col items-center mt-2">
+  <img src="./images/obstacle-expect.png"
+    class="w-full max-h-[200px] object-contain rounded shadow-sm border border-gray-200/50" />
+  <div class="text-xs opacity-70 mt-1">
+    (AI를 통해 생성)
+  </div>
+</div>
 
 </div>
 </div>
+
 ---
 theme: seriph
-class: text-center
+layout: default
 highlighter: shiki
 ---
 
+<div grid="~ cols-2 gap-8" class="h-full items-center">
+
+<div class="flex flex-col justify-center items-center border-r border-gray-300 pr-8 h-[80%]">
+
 # 감사합니다
 
-<div class="text-xl opacity-80 mb-8">Questions & Discussion</div>
+<div class="text-xl opacity-80 mt-4">Questions & Discussion</div>
 
-<div grid="~ cols-2 gap-8" class="text-left text-sm mt-4">
+</div>
 
-<div>
+<div class="text-left text-sm pl-4">
 
 ### 참고 문헌
 
 - Donea, J. et al. (2004). Arbitrary Lagrangian-Eulerian Methods. *Encyclopedia of Computational Mechanics*.
-- Keith, B. and Surowiec, T.M. (2024). Proximal Galerkin: A Structure-Preserving Finite Element Method for Pointwise Bound Constraints. *Found Comput Math*.
+- Dokken, J. S., & Farrell, P. E. (2025). The Latent Variable Proximal Point Algorithm for Variational Problems with Inequality Constraints. *Found Comput Math*.
+- FEniCS Tutorial
+  (https://jsdokken.com/dolfinx-tutorial/chapter2/navierstokes.html)
 
 </div>
 
-<div>
-
-### 사용 소프트웨어
-
-| 소프트웨어 | 용도 |
-|---|---|
-| FEniCSx v0.10.0 | 유한요소 계산 |
-| Gmsh | 메시 생성 |
-| ParaView | 결과 시각화 |
-| PETSc / MPI | 선형 대수 / 병렬 |
-| dolfinx | FEM 프레임워크 |
-
-</div>
-
-</div>
-
-<div class="absolute bottom-6 right-6 text-xl">
-  윤현준 / 박기성 / 박찬서 / 이민용
 </div>
