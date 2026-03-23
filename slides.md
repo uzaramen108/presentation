@@ -534,14 +534,14 @@ NS에 **부피 저항항** $\frac{\mu}{\kappa}u$를 추가한 형태입니다:
 
 $$\rho\frac{\partial u}{\partial t} + \rho(u\cdot\nabla u) = -\nabla p + \mu\nabla^2 u - \underbrace{\frac{\mu}{\kappa}u}_{\text{Brinkman 저항}}$$
 
-- $\kappa$: 막의 투과율 (작을수록 저항 증가)
+- $\kappa$: 투과율 (작을수록 저항 증가)
 - $\mu/\kappa$: 물리적 저항 계수
 
 
 <br>
 
 ```
-실제(Darcy):       p⁻ ━━━┤불연속┝━━━ p⁺
+Darcy:       p⁻ ━━━┤불연속┝━━━ p⁺
 Brinkman:   p⁻ ━━━╲_____╱━━━ p⁺  (완만)
 ```
 
@@ -552,7 +552,7 @@ Brinkman:   p⁻ ━━━╲_____╱━━━ p⁺  (완만)
 
 <div v-click>
 
-### 🔹 한계
+### 🔹 적용
 
 <br>
 
@@ -560,11 +560,13 @@ Brinkman:   p⁻ ━━━╲_____╱━━━ p⁺  (완만)
 
 $$\int_{\Omega} \frac{\mu}{\kappa}\cdot\mathbf{1}_{\Gamma_m^\delta}\cdot u\cdot v\;dx \leftarrow \text{3D 영역에 분산}$$
 
+따라서 막에 적용하는 것이 아닌 부피로 정의되는 장애물에 적용하는 것이 적절.
+
 실제 막의 압력 점프는 **표면 적분(Surface integral)** 이어야 합니다:
 
 $$\int_{\Gamma_m} [\![p]\!]\cdot v\cdot n\;dS \leftarrow \text{2D 경계면에 집중}$$
 
-* Brinkman은 x, y, z **모든 방향 동등하게 저항** 을 받으며 막의 모든 방향에서 통과, 하지만 실제 막은 법선 방향으로만 통과
+* Brinkman은 x, y, z **모든 방향 동등하게 저항** 을 받으며 막의 모든 방향에서 통과, 하지만 막은 법선 방향으로만 통과
 
 </div>
 </div>
