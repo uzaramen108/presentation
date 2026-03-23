@@ -82,7 +82,7 @@ th, td {
 
 ### 🔹 입구 조건
 
-Poiseuille 포물선 프로파일에 사인파 시간 변화를 적용합니다:
+포물선 프로파일 + 사인파 시간 변화
 
 $$u_{inlet}(r,t) = u_{max} \sin\!\left(\frac{\pi t}{2T}\right)\left(1 - \frac{r^2}{R^2}\right)$$
 
@@ -96,13 +96,14 @@ $$u_{inlet}(r,t) = u_{max} \sin\!\left(\frac{\pi t}{2T}\right)\left(1 - \frac{r^
 
 </div>
 
-<div class="w-full flex justify-center mt-4">
-  <img src="./images/screenshot1.png"
-    class="w-full max-h-[140px] object-contain rounded shadow-sm border border-gray-200/50" />
+<div class="w-full flex justify-center -mt-3">
+  <img src="./images/yoon_gpt.png"
+    class="w-full max-h-[140px] object-contain rounded" />
 </div>
 
 </div>
 </div>
+
 ---
 layout: center
 class: text-center
@@ -1567,7 +1568,7 @@ class: text-center
 highlighter: shiki
 ---
 
-# 11. 시뮬레이션 결과
+# 11-2. 시뮬레이션 결과
 
 <div class="text-xl opacity-80 mb-6">압력 하중에 의한 탄성막 반력 및 ALE 메시 변형</div>
 
@@ -1605,7 +1606,50 @@ highlighter: shiki
 
 </div>
 </div>
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
 
+# 11-3. 시뮬레이션 결과
+
+<div class="text-xl opacity-80 mb-6">3차원 프로파일</div>
+
+<div grid="~ cols-2 gap-8" class="text-left text-sm">
+
+<div v-click>
+
+### 🔹 3차원 속도(velocity)
+
+<div class="w-full flex flex-col items-center mt-2">
+  
+  <video controls autoplay loop muted width="100%" class="rounded shadow-lg">
+    <source src="./video/velocity-profile.mp4.mp4" type="video/mp4">
+  </video>
+  <div class="text-xs opacity-70 mt-1">
+    원기둥 속도 분포
+  </div>
+</div>
+
+</div>
+
+<div v-click>
+
+### 🔹 3차원 압력(pressure)
+
+<div class="w-full flex flex-col items-center mt-2">
+  
+  <video controls autoplay loop muted width="100%" class="rounded shadow-lg">
+    <source src="./video/pressure-profile.mp4" type="video/mp4">
+  </video>
+  <div class="text-xs opacity-70 mt-1">
+    원기둥 압력 분포
+  </div>
+</div>
+
+</div>
+</div>
 ---
 theme: seriph
 class: text-center
