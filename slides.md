@@ -269,7 +269,7 @@ highlighter: shiki
 <div class="text-[13px] mt-4" v-click>
 
 ### 1. 수식 변환 과정
-진짜 속도와 가짜 속도의 차이는 "새롭게 업데이트될 압력의 구배(기울기)" 때문에 발생합니다.
+실제 속도와 임시 속도의 차이는 "새롭게 업데이트될 압력의 구배(기울기)" 때문에 발생합니다.
 $$ \rho \frac{u^{n+1} - u^*}{\Delta t} = -\nabla (p^{n+1} - p^n) $$
 
 양변에 발산($\nabla \cdot$)을 취하고, $\nabla \cdot u^{n+1} = 0$을 대입하면 **poisson equation** 형태가 됩니다. (여기서 $\phi = p^{n+1} - p^n$ 이라 둡니다).
@@ -291,8 +291,8 @@ $$ u^{n+1} = u^* - \frac{\Delta t}{\rho} \nabla \phi $$
 전체 식에 밀도 $\rho$와 테스트 함수 $v$를 곱하여 적분형(질량 행렬 형태)으로 만듭니다.
 $$ \int \rho u^{n+1} \cdot v = \int \rho u^* \cdot v - \int \Delta t \nabla \phi \cdot v $$
 
-- 좌변: 구하려는 진짜 속도 $u^{n+1}$ (코드의 `u`)
-- 우변 첫 번째: 이미 구한 가짜 속도 $u^*$ (코드의 `u_s`)
+- 좌변: 구하려는 실제 속도 $u^{n+1}$ (코드의 `u`)
+- 우변 첫 번째: 이미 구한 임시 속도 $u^*$ (코드의 `u_s`)
 - 우변 두 번째: 이미 구한 압력 증분의 구배 $\nabla \phi$
 
 이 단계를 통과한 $u^{n+1}$은 완벽하게 비압축성 조건을 만족하게 됩니다.
@@ -337,7 +337,7 @@ L3_ufl = form(rho_v * dot(u_, vf) * dxf
 
 속도-압력 쌍은 **inf-sup 조건(LBB)** 을 만족해야 발진하지 않습니다.
 
--비압축성 유체 계산에서 속도($u$)와 압력($p$)에 똑같은 차수의 함수(예: 둘 다 P1)를 사용하면, 계산 결과에서 압력이 마치 체스판 무늬처럼 위아래로 진동(Oscillation)이 일어남.
+-비압축성 유체 계산에서 속도($u$)와 압력($p$)에 똑같은 차수의 함수(예: 둘 다 P1)를 사용하면, 계산 결과에서 압력이 위아래로 진동(Oscillation)이 일어남.
 
 <div style="background-color:rgb(220,220,210)">
 
@@ -358,7 +358,7 @@ highlighter: shiki
 
 # 3-1. 메시 설정: 파이프 단독 구조
 
-<div class="text-xl opacity-80 mb-6">Brinkman 방식 — 분리된 2개 메시</div>
+<div class="text-xl opacity-80 mb-6">분리된 2개 메시</div>
 
 <div grid="~ cols-2 gap-8" class="text-left text-sm">
 
@@ -382,36 +382,6 @@ gmsh.model.occ.translate(..., mem_pos, 0, 0)
 
 <div v-click>
 
-### 🔹 분리된 메시의 문제점
-```
-fluid_mesh ──┐
-              ├── 서로 다른 메시
-mem_mesh   ──┘
-
-```
-
-→ 내부 경계면 공유 불가<br>
-→ dS 표면 적분 불가<br>
-→ FacetNormal을 dx 안에 사용 시 오류<br>
-→ KDTree 매핑 필요
-</div>
-
-</div>
-
----
-theme: seriph
-class: text-center
-highlighter: shiki
----
-
-# 3-2. 메시 설정: 파이프 단독 구조
-
-<div class="text-xl opacity-80 mb-6">Brinkman 방식 — 분리된 2개 메시</div>
-
-<div grid="~ cols-2 gap-8" class="text-left text-sm">
-
-<div v-click>
-
 ### 🔹 경계 조건
 
 **유체:**
@@ -424,8 +394,21 @@ highlighter: shiki
 
 </div>
 
-<div v-click>
+</div>
 
+---
+theme: seriph
+class: text-center
+highlighter: shiki
+---
+
+# 3-2. 메시 설정: 파이프 단독 구조
+
+<div class="text-xl opacity-80 mb-6">분리된 2개 메시</div>
+
+<div grid="~ cols-2 gap-8" class="text-left text-sm">
+
+<div v-click>
 
 ### 🔹 압력-막 연결 (KDTree 매핑)
 ```python
@@ -438,6 +421,23 @@ w_coords = W_m.tabulate_dof_coordinates()
 tree = cKDTree(q_coords)
 _, W_to_Qf = tree.query(w_coords)
 ```
+
+</div>
+
+<div v-click>
+
+### 🔹 분리된 메시의 문제점
+```
+fluid_mesh ──┐
+              ├── 서로 다른 메시
+mem_mesh   ──┘
+
+```
+
+→ 내부 경계면 공유 불가<br>
+→ dS 표면 적분 불가<br>
+→ FacetNormal을 dx 안에 사용 시 오류<br>
+→ KDTree 매핑 필요
 
 </div>
 </div>
@@ -578,6 +578,11 @@ class: text-center
 highlighter: shiki
 ---
 
+<script setup>
+import { ref } from 'vue'
+const isExpanded = ref(false)
+</script>
+
 # 5. Darcy 표면항 — 물리적으로 근거있는 해법
 
 <div class="text-xl opacity-80 mb-6">막을 2D 내부 경계면으로 처리</div>
@@ -600,8 +605,16 @@ $$F_1 += \int_{\Gamma_m} \frac{\mu}{\kappa} \langle u \rangle \cdot n^{+} \, \la
 - $n^+$: 막의 법선 벡터 — **dS에서만 합법, dx에서는 오류**
 - $\mu/\kappa$: 투과율에서 유도된 물리량
 
+<div class="mt-4 flex justify-center">
+  <button 
+    @click="isExpanded = true"
+    class="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors shadow-md"
+  >
+    이미지 크게 보기
+  </button>
 </div>
 
+</div>
 <div v-click>
 
 ### 🔹 실제 거동 vs 세 가지 모델 비교
@@ -615,10 +628,22 @@ $$F_1 += \int_{\Gamma_m} \frac{\mu}{\kappa} \langle u \rangle \cdot n^{+} \, \la
 | 압력 점프 | ✅ 불연속 | △ 완만 | ✅ 강제 |
 | 저항 계수 | 기준 | △ 근사 | ✅ $\kappa$ |
 | 법선 방향만 | ✅ | ❌ 전방향 | ✅ |
-| 접선 차단 | ✅ | ❌ | ✅ BJS |
 | 실행 난이도 | | 낮음 | 높음 |
 | 적분 형태 | — | 부피 $dx$ | 표면 $dS$ |
 
+</div>
+
+</div>
+</div>
+
+<div v-if="isExpanded" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-8" @click="isExpanded = false">
+<div class="relative bg-white dark:bg-slate-800 shadow-2xl rounded-xl p-8 max-w-5xl w-full overflow-y-auto border border-gray-300" @click.stop>
+<button @click="isExpanded = false" class="absolute top-4 right-4 text-2xl font-bold opacity-50 hover:opacity-100">&times;</button>
+<div class="w-full flex flex-col items-center">
+<img src="./images/mem_surf.png" class="w-full h-auto max-h-[40vh] object-contain rounded shadow-md" />
+<div class="text-lg font-bold opacity-80 mt-6 text-center">
+(막을 통과하는 유체 유동)
+</div>
 </div>
 </div>
 </div>
@@ -1748,7 +1773,7 @@ highlighter: shiki
 
 <div v-click>
 
-### 🔹 3: On/Off 스위치 코드 작성 및 실행
+### 🔹 3: On/Off 밸브 코드 작성 및 실행
 
 <br>
 
@@ -1762,9 +1787,6 @@ highlighter: shiki
 <div class="w-full flex flex-col items-center mt-2">
   <img src="./images/obstacle-expect.png"
     class="w-full max-h-[200px] object-contain rounded shadow-sm border border-gray-200/50" />
-  <div class="text-xs opacity-70 mt-1">
-    (AI를 통해 생성)
-  </div>
 </div>
 
 </div>
